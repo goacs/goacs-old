@@ -1,6 +1,8 @@
 package tasks
 
 import (
+	"goacs/models/cpe"
+	"goacs/repository/mysql"
 	"gopkg.in/guregu/null.v4"
 	"log"
 	"time"
@@ -15,7 +17,8 @@ const (
 
 type Task struct {
 	Id        int64     `json:"id" db:"id"`
-	CpeUuid   string    `json:"cpe_uuid" db:"cpe_uuid"`
+	ForName   string    `json:"for_name" db:"for_name"`
+	ForID     string    `json:"for_id" db:"for_id"`
 	Event     string    `json:"event" db:"event"`
 	NotBefore time.Time `json:"not_before" db:"not_before"`
 	Task      string    `json:"task" db:"task"`
@@ -23,6 +26,24 @@ type Task struct {
 	Infinite  bool      `json:"infinite" db:"infinite"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	DoneAt    null.Time `json:"done_at" db:"done_at"`
+}
+
+func NewCPETask(cpe *cpe.CPE) Task {
+	return Task{
+		ForName:   mysql.TASK_CPE,
+		ForID:     cpe.UUID,
+		NotBefore: time.Now(),
+		CreatedAt: time.Now(),
+	}
+}
+
+func NewGlobalTask(id string) Task {
+	return Task{
+		ForName:   mysql.TASK_GLOBAL,
+		ForID:     id,
+		NotBefore: time.Now(),
+		CreatedAt: time.Now(),
+	}
 }
 
 func FilterTasksByEvent(event string, tasksList []Task) []Task {

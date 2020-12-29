@@ -8,6 +8,11 @@ import (
 	"time"
 )
 
+const (
+	TASK_CPE    = "cpe"
+	TASK_GLOBAL = "global"
+)
+
 type TasksRepository struct {
 	db *sqlx.DB
 }
@@ -18,13 +23,14 @@ func NewTasksRepository(connection *sqlx.DB) TasksRepository {
 	}
 }
 
-func (t *TasksRepository) AddTaskForCPE(task tasks.Task) {
+func (t *TasksRepository) AddTask(task tasks.Task) {
 	dialect := goqu.Dialect("mysql")
 
 	query, args, _ := dialect.Insert("tasks").Prepared(true).
-		Cols("cpe_uuid", "event", "task", "not_before", "script", "infinite", "created_at").
+		Cols("for_name", "for_id", "event", "task", "not_before", "script", "infinite", "created_at").
 		Vals(goqu.Vals{
-			task.CpeUuid,
+			task.ForName,
+			task.ForID,
 			task.Event,
 			task.Task,
 			task.NotBefore,
@@ -36,14 +42,25 @@ func (t *TasksRepository) AddTaskForCPE(task tasks.Task) {
 	_, err := t.db.Exec(query, args...)
 
 	if err != nil {
-		log.Println("error AddTaskForCPE ", err.Error())
+		log.Println("error AddTask ", err.Error())
 	}
 
 }
 
+func (t *TasksRepository) GetGlobalTasks(id string) []tasks.Task {
+	var globalTasks []tasks.Task
+	err := t.db.Select(&globalTasks, "SELECT * FROM tasks WHERE for_name=? AND for_id=? AND (done_at is null or infinite = true)", TASK_GLOBAL, id)
+
+	if err != nil {
+		log.Println(err.Error())
+	}
+
+	return globalTasks
+}
+
 func (t *TasksRepository) GetTasksForCPE(cpe_uuid string) []tasks.Task {
 	var cpeTasks []tasks.Task
-	err := t.db.Select(&cpeTasks, "SELECT * FROM tasks WHERE cpe_uuid=? AND (done_at is null or infinite = true)", cpe_uuid)
+	err := t.db.Select(&cpeTasks, "SELECT * FROM tasks WHERE for_name=? AND for_id=? AND (done_at is null or infinite = true)", TASK_CPE, cpe_uuid)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -54,14 +71,14 @@ func (t *TasksRepository) GetTasksForCPE(cpe_uuid string) []tasks.Task {
 
 func (t *TasksRepository) GetTasksForCPEWithoutDateCheck(cpe_uuid string) []tasks.Task {
 	var cpeTasks []tasks.Task
-	_ = t.db.Select(&cpeTasks, "SELECT * FROM tasks WHERE cpe_uuid=? AND done_at is null", cpe_uuid)
+	_ = t.db.Select(&cpeTasks, "SELECT * FROM tasks WHERE for_name=? AND for_id=? AND done_at is null", TASK_CPE, cpe_uuid)
 
 	return cpeTasks
 }
 
 func (t *TasksRepository) GetAllTasksForCPE(cpe_uuid string) []tasks.Task {
 	var cpeTasks []tasks.Task
-	_ = t.db.Select(&cpeTasks, "SELECT * FROM tasks WHERE cpe_uuid=?", cpe_uuid)
+	_ = t.db.Select(&cpeTasks, "SELECT * FROM tasks WHERE for_name=? AND for_id=?", TASK_CPE, cpe_uuid)
 
 	return cpeTasks
 }

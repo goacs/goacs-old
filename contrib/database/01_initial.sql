@@ -101,7 +101,8 @@ create table tasks
 (
     id int auto_increment
         primary key,
-    cpe_uuid varchar(36),
+    for_name varchar(20),
+    for_id varchar(36),
     event varchar(50),
     not_before datetime,
     task varchar(80),
@@ -111,5 +112,5 @@ create table tasks
     done_at datetime null
 );
 
-create index tasks_cpe_uuid_index
-    on tasks (cpe_uuid);
+create index tasks_for_index
+    on tasks (for_name, for_id);

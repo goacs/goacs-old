@@ -7,18 +7,16 @@ import (
 	"goacs/models/tasks"
 	"goacs/repository"
 	"goacs/repository/mysql"
-	"gopkg.in/guregu/null.v4"
-	"time"
 )
 
-type AddTaskRequest struct {
+type AddTaskForCPERequest struct {
 	Event  string `json:"event" validate:"required"`
 	Task   string `json:"task" validate:"required"`
 	Script string `json:"script"`
 }
 
-func AddTask(ctx *gin.Context) {
-	var addTaskRequest AddTaskRequest
+func AddTaskForCPE(ctx *gin.Context) {
+	var addTaskRequest AddTaskForCPERequest
 	_ = ctx.BindJSON(&addTaskRequest)
 
 	validator := request.NewApiValidator(ctx, addTaskRequest)
@@ -37,17 +35,11 @@ func AddTask(ctx *gin.Context) {
 		return
 	}
 
-	task := tasks.Task{
-		CpeUuid:   cpeModel.UUID,
-		Event:     addTaskRequest.Event,
-		NotBefore: time.Now(),
-		Task:      addTaskRequest.Task,
-		Script:    addTaskRequest.Script,
-		Infinite:  false,
-		CreatedAt: time.Now(),
-		DoneAt:    null.Time{},
-	}
+	task := tasks.NewCPETask(cpeModel)
+	task.Event = addTaskRequest.Event
+	task.Task = addTaskRequest.Task
+	task.Script = addTaskRequest.Script
 
-	taskrepository.AddTaskForCPE(task)
+	taskrepository.AddTask(task)
 	response.ResponseData(ctx, "")
 }
