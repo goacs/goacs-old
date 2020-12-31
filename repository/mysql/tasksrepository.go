@@ -8,11 +8,6 @@ import (
 	"time"
 )
 
-const (
-	TASK_CPE    = "cpe"
-	TASK_GLOBAL = "global"
-)
-
 type TasksRepository struct {
 	db *sqlx.DB
 }
@@ -49,7 +44,7 @@ func (t *TasksRepository) AddTask(task tasks.Task) {
 
 func (t *TasksRepository) GetGlobalTasks(id string) []tasks.Task {
 	var globalTasks []tasks.Task
-	err := t.db.Select(&globalTasks, "SELECT * FROM tasks WHERE for_name=? AND for_id=? AND (done_at is null or infinite = true)", TASK_GLOBAL, id)
+	err := t.db.Select(&globalTasks, "SELECT * FROM tasks WHERE for_name=? AND for_id=? AND (done_at is null or infinite = true)", tasks.TASK_GLOBAL, id)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -60,7 +55,7 @@ func (t *TasksRepository) GetGlobalTasks(id string) []tasks.Task {
 
 func (t *TasksRepository) GetTasksForCPE(cpe_uuid string) []tasks.Task {
 	var cpeTasks []tasks.Task
-	err := t.db.Select(&cpeTasks, "SELECT * FROM tasks WHERE for_name=? AND for_id=? AND (done_at is null or infinite = true)", TASK_CPE, cpe_uuid)
+	err := t.db.Select(&cpeTasks, "SELECT * FROM tasks WHERE for_name=? AND for_id=? AND (done_at is null or infinite = true)", tasks.TASK_CPE, cpe_uuid)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -71,14 +66,14 @@ func (t *TasksRepository) GetTasksForCPE(cpe_uuid string) []tasks.Task {
 
 func (t *TasksRepository) GetTasksForCPEWithoutDateCheck(cpe_uuid string) []tasks.Task {
 	var cpeTasks []tasks.Task
-	_ = t.db.Select(&cpeTasks, "SELECT * FROM tasks WHERE for_name=? AND for_id=? AND done_at is null", TASK_CPE, cpe_uuid)
+	_ = t.db.Select(&cpeTasks, "SELECT * FROM tasks WHERE for_name=? AND for_id=? AND done_at is null", tasks.TASK_CPE, cpe_uuid)
 
 	return cpeTasks
 }
 
 func (t *TasksRepository) GetAllTasksForCPE(cpe_uuid string) []tasks.Task {
 	var cpeTasks []tasks.Task
-	_ = t.db.Select(&cpeTasks, "SELECT * FROM tasks WHERE for_name=? AND for_id=?", TASK_CPE, cpe_uuid)
+	_ = t.db.Select(&cpeTasks, "SELECT * FROM tasks WHERE for_name=? AND for_id=?", tasks.TASK_CPE, cpe_uuid)
 
 	return cpeTasks
 }

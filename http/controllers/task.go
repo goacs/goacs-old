@@ -35,7 +35,7 @@ func AddTaskForCPE(ctx *gin.Context) {
 		return
 	}
 
-	task := tasks.NewCPETask(cpeModel)
+	task := tasks.NewCPETask(cpeModel.UUID)
 	task.Event = addTaskRequest.Event
 	task.Task = addTaskRequest.Task
 	task.Script = addTaskRequest.Script

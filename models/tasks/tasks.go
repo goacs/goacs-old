@@ -1,11 +1,14 @@
 package tasks
 
 import (
-	"goacs/models/cpe"
-	"goacs/repository/mysql"
 	"gopkg.in/guregu/null.v4"
 	"log"
 	"time"
+)
+
+const (
+	TASK_CPE    = "cpe"
+	TASK_GLOBAL = "global"
 )
 
 const (
@@ -28,10 +31,10 @@ type Task struct {
 	DoneAt    null.Time `json:"done_at" db:"done_at"`
 }
 
-func NewCPETask(cpe *cpe.CPE) Task {
+func NewCPETask(cpe_uuid string) Task {
 	return Task{
-		ForName:   mysql.TASK_CPE,
-		ForID:     cpe.UUID,
+		ForName:   TASK_CPE,
+		ForID:     cpe_uuid,
 		NotBefore: time.Now(),
 		CreatedAt: time.Now(),
 	}
@@ -39,7 +42,7 @@ func NewCPETask(cpe *cpe.CPE) Task {
 
 func NewGlobalTask(id string) Task {
 	return Task{
-		ForName:   mysql.TASK_GLOBAL,
+		ForName:   TASK_GLOBAL,
 		ForID:     id,
 		NotBefore: time.Now(),
 		CreatedAt: time.Now(),
