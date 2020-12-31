@@ -19,6 +19,9 @@ func RegisterApiRoutes(gin *gin.Engine) {
 		apiGroup.GET("/dashboard", controllers.GetDashboardData)
 		apiGroup.POST("/user/create", controllers.UserCreate)
 
+		apiGroup.GET("/config", controllers.GetConfig)
+		apiGroup.POST("/config", controllers.SaveConfig)
+
 		apiGroup.GET("/device", controllers.GetDevicesList)
 		apiGroup.GET("/device/:uuid", controllers.GetDevice)
 		apiGroup.DELETE("/device/:uuid", controllers.DeleteDevice)
@@ -42,6 +45,8 @@ func RegisterApiRoutes(gin *gin.Engine) {
 		apiGroup.GET("/template/:templateid/parameters", controllers.GetTemplateParameters)
 		apiGroup.POST("/template/:templateid/parameters/:parameter_uuid", controllers.UpdateTemplateParameter)
 		apiGroup.DELETE("/template/:templateid/parameters/:parameter_uuid", controllers.DeleteTemplateParameter)
+
+		apiGroup.GET("/tasks", controllers.GetGlobalTasks)
 
 		apiGroup.GET("/faults/today", controllers.GetTodayFaults)
 

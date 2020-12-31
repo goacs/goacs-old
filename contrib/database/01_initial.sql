@@ -114,3 +114,12 @@ create table tasks
 
 create index tasks_for_index
     on tasks (for_name, for_id);
+
+
+create table config
+(
+    config_key varchar(50) not null
+        primary key,
+    config_value varchar(100) null
+);
+

@@ -126,8 +126,8 @@ func ProcessTasks(reqRes *acshttp.CPERequest, event string) {
 	tasksRepository := mysql.NewTasksRepository(reqRes.DBConnection)
 	cpeTasks := tasksRepository.GetTasksForCPE(reqRes.Session.CPE.UUID)
 
-	if reqRes.Session.IsNewInACS == true {
-		tasksForNewDevices := tasksRepository.GetTasksForCPE("new")
+	if reqRes.Session.IsNewInACS == true && event == acsxml.GPVResp {
+		tasksForNewDevices := tasksRepository.GetGlobalTask("new")
 		log.Println(tasksForNewDevices)
 		cpeTasks = append(cpeTasks, tasksForNewDevices...)
 	}

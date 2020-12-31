@@ -15,6 +15,11 @@ type AddTaskForCPERequest struct {
 	Script string `json:"script"`
 }
 
+func GetGlobalTasks(ctx *gin.Context) {
+	taskrepository := mysql.NewTasksRepository(repository.GetConnection())
+	response.ResponseData(ctx, taskrepository.GetGlobalTasks())
+}
+
 func AddTaskForCPE(ctx *gin.Context) {
 	var addTaskRequest AddTaskForCPERequest
 	_ = ctx.BindJSON(&addTaskRequest)

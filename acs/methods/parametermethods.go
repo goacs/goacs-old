@@ -55,8 +55,22 @@ func (pd *ParameterDecisions) GetParameterValuesResponseParser() {
 	pd.ReqRes.Session.CPE.AddParameterValues(gpvr.ParameterList)
 	pd.ReqRes.Session.FillCPESessionBaseInfo(gpvr.ParameterList)
 	cpeRepository := mysql.NewCPERepository(repository.GetConnection())
-	templateRepository := mysql.NewTemplateRepository(repository.GetConnection())
 	_, _, _ = cpeRepository.UpdateOrCreate(&pd.ReqRes.Session.CPE)
+
+	//log.Println(pd.CPERequest.Session.CPE.ParameterValues)
+	if pd.ReqRes.Session.IsNewInACS {
+		_ = cpeRepository.BulkInsertOrUpdateParameters(&pd.ReqRes.Session.CPE, pd.ReqRes.Session.CPE.ParameterValues)
+	}
+
+}
+
+func (pd *ParameterDecisions) SetParameterValuesRequest() {
+	//parametersToWrite := pd.CPERequest.Session.CPE.GetParametersWithFlag("W")
+	//log.Println("parametersToWrite")
+	////log.Println(parametersToWrite)
+
+	cpeRepository := mysql.NewCPERepository(repository.GetConnection())
+	templateRepository := mysql.NewTemplateRepository(repository.GetConnection())
 
 	cpeDBParameters, err := cpeRepository.GetCPEParameters(&pd.ReqRes.Session.CPE)
 	if err != nil {
@@ -75,18 +89,6 @@ func (pd *ParameterDecisions) GetParameterValuesResponseParser() {
 			pd.ReqRes.Session.NextJob = acs.JOB_SENDPARAMETERS
 		}
 	}
-
-	//log.Println(pd.CPERequest.Session.CPE.ParameterValues)
-	if pd.ReqRes.Session.IsNewInACS {
-		_ = cpeRepository.BulkInsertOrUpdateParameters(&pd.ReqRes.Session.CPE, pd.ReqRes.Session.CPE.ParameterValues)
-	}
-
-}
-
-func (pd *ParameterDecisions) SetParameterValuesRequest() {
-	//parametersToWrite := pd.CPERequest.Session.CPE.GetParametersWithFlag("W")
-	//log.Println("parametersToWrite")
-	////log.Println(parametersToWrite)
 
 	//TODO: Check why some parameters are writeable, but cpe returns fault on it
 	if len(pd.ReqRes.Session.CPE.ParametersQueue) > 0 {

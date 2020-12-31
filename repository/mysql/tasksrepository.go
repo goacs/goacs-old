@@ -42,7 +42,18 @@ func (t *TasksRepository) AddTask(task tasks.Task) {
 
 }
 
-func (t *TasksRepository) GetGlobalTasks(id string) []tasks.Task {
+func (t *TasksRepository) GetGlobalTasks() []tasks.Task {
+	var globalTasks []tasks.Task
+	err := t.db.Select(&globalTasks, "SELECT * FROM tasks WHERE for_name=? AND (done_at is null or infinite = true)", tasks.TASK_GLOBAL)
+
+	if err != nil {
+		log.Println(err.Error())
+	}
+
+	return globalTasks
+}
+
+func (t *TasksRepository) GetGlobalTask(id string) []tasks.Task {
 	var globalTasks []tasks.Task
 	err := t.db.Select(&globalTasks, "SELECT * FROM tasks WHERE for_name=? AND for_id=? AND (done_at is null or infinite = true)", tasks.TASK_GLOBAL, id)
 
