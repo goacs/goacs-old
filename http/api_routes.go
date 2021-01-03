@@ -33,7 +33,7 @@ func RegisterApiRoutes(gin *gin.Engine) {
 		apiGroup.POST("/device/:uuid/addobject", controllers.AddObject)
 		apiGroup.POST("/device/:uuid/getparametervalues", controllers.GetParameterValues)
 		apiGroup.GET("/device/:uuid/tasks", controllers.GetDeviceQueuedTasks)
-		apiGroup.POST("/device/:uuid/tasks", controllers.AddTaskForCPE)
+		apiGroup.POST("/device/:uuid/tasks", controllers.AddDeviceTask)
 		apiGroup.GET("/device/:uuid/templates", controllers.GetDeviceTemplates)
 		apiGroup.POST("/device/:uuid/templates", controllers.AssignTemplateToDevice)
 		apiGroup.DELETE("/device/:uuid/templates/:template_id", controllers.UnassignTemplateFromDevice)
@@ -47,6 +47,7 @@ func RegisterApiRoutes(gin *gin.Engine) {
 		apiGroup.DELETE("/template/:templateid/parameters/:parameter_uuid", controllers.DeleteTemplateParameter)
 
 		apiGroup.GET("/tasks", controllers.GetGlobalTasks)
+		apiGroup.POST("/tasks", controllers.AddGlobalTask)
 
 		apiGroup.GET("/faults/today", controllers.GetTodayFaults)
 

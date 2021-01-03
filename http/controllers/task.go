@@ -9,7 +9,7 @@ import (
 	"goacs/repository/mysql"
 )
 
-type AddTaskForCPERequest struct {
+type AddGlobalTaskRequest struct {
 	Event  string `json:"event" validate:"required"`
 	Task   string `json:"task" validate:"required"`
 	Script string `json:"script"`
@@ -20,11 +20,11 @@ func GetGlobalTasks(ctx *gin.Context) {
 	response.ResponseData(ctx, taskrepository.GetGlobalTasks())
 }
 
-func AddTaskForCPE(ctx *gin.Context) {
-	var addTaskRequest AddTaskForCPERequest
-	_ = ctx.BindJSON(&addTaskRequest)
+func AddGlobalTask(ctx *gin.Context) {
+	var globalTaskRequst AddGlobalTaskRequest
+	_ = ctx.BindJSON(&globalTaskRequst)
 
-	validator := request.NewApiValidator(ctx, addTaskRequest)
+	validator := request.NewApiValidator(ctx, globalTaskRequst)
 	verr := validator.Validate()
 
 	if verr != nil {
@@ -32,19 +32,12 @@ func AddTaskForCPE(ctx *gin.Context) {
 		return
 	}
 
-	cperepository := mysql.NewCPERepository(repository.GetConnection())
 	taskrepository := mysql.NewTasksRepository(repository.GetConnection())
-	cpeModel, err := getCPEFromContext(ctx, cperepository)
 
-	if err != nil {
-		return
-	}
-
-	task := tasks.NewCPETask(cpeModel.UUID)
-	task.Event = addTaskRequest.Event
-	task.Task = addTaskRequest.Task
-	task.Script = addTaskRequest.Script
-
+	task := tasks.NewGlobalTask(tasks.GLOBAL_ID_NEW)
+	task.Event = globalTaskRequst.Event
+	task.Task = globalTaskRequst.Task
+	task.Script = globalTaskRequst.Script
 	taskrepository.AddTask(task)
 	response.ResponseData(ctx, "")
 }

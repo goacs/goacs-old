@@ -12,6 +12,11 @@ const (
 )
 
 const (
+	GLOBAL_ID_NEW    = "new"
+	GLOBAL_ID_INFORM = "inform"
+)
+
+const (
 	RunScript      string = "RunScript"
 	SendParameters        = "SendParameters"
 	Reboot                = "Reboot"
@@ -44,6 +49,7 @@ func NewGlobalTask(id string) Task {
 	return Task{
 		ForName:   TASK_GLOBAL,
 		ForID:     id,
+		Infinite:  true,
 		NotBefore: time.Now(),
 		CreatedAt: time.Now(),
 	}
