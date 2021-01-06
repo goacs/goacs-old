@@ -18,7 +18,7 @@ func NewConfigRepository(connection *sqlx.DB) ConfigRepository {
 }
 
 func (r *ConfigRepository) GetValues() map[string]string {
-	var configValues map[string]string
+	configValues := map[string]string{}
 
 	dialect := goqu.Dialect("mysql")
 
@@ -26,7 +26,19 @@ func (r *ConfigRepository) GetValues() map[string]string {
 		Prepared(true).
 		ToSQL()
 
-	_ = r.db.Select(&configValues, query, args...)
+	rows, err := r.db.Query(query, args...)
+
+	if err != nil {
+		log.Println(err)
+		return configValues
+	}
+
+	for rows.Next() {
+		var key, value string
+		_ = rows.Scan(&key, &value)
+
+		configValues[key] = value
+	}
 
 	return configValues
 }

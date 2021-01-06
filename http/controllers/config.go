@@ -6,6 +6,7 @@ import (
 	"goacs/http/response"
 	"goacs/repository"
 	"goacs/repository/mysql"
+	"log"
 )
 
 type SaveConfigRequest struct {
@@ -34,5 +35,7 @@ func SaveConfig(ctx *gin.Context) {
 
 func GetConfig(ctx *gin.Context) {
 	configRepository := mysql.NewConfigRepository(repository.GetConnection())
-	response.ResponseData(ctx, configRepository.GetValues())
+	values := configRepository.GetValues()
+	log.Println(values)
+	response.ResponseData(ctx, values)
 }
