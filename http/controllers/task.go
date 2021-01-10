@@ -7,12 +7,18 @@ import (
 	"goacs/models/tasks"
 	"goacs/repository"
 	"goacs/repository/mysql"
+	"strconv"
 )
 
 type AddGlobalTaskRequest struct {
 	Event  string `json:"event" validate:"required"`
 	Task   string `json:"task" validate:"required"`
 	Script string `json:"script"`
+}
+
+type UpdateGlobalTaskRequest struct {
+	TaskId int64 `validate:"required"`
+	AddGlobalTaskRequest
 }
 
 func GetGlobalTasks(ctx *gin.Context) {
@@ -39,5 +45,30 @@ func AddGlobalTask(ctx *gin.Context) {
 	task.Task = globalTaskRequst.Task
 	task.Script = globalTaskRequst.Script
 	taskrepository.AddTask(task)
+	response.ResponseData(ctx, "")
+}
+
+func UpdateGlobalTask(ctx *gin.Context) {
+	var globalTaskRequst UpdateGlobalTaskRequest
+	_ = ctx.BindJSON(&globalTaskRequst)
+
+	globalTaskRequst.TaskId, _ = strconv.ParseInt(ctx.Param("taskid"), 10, 64)
+
+	validator := request.NewApiValidator(ctx, globalTaskRequst)
+	verr := validator.Validate()
+
+	if verr != nil {
+		response.ResponseValidationErrors(ctx, validator)
+		return
+	}
+
+	taskrepository := mysql.NewTasksRepository(repository.GetConnection())
+	task := taskrepository.GetTask(globalTaskRequst.TaskId)
+
+	task.Event = globalTaskRequst.Event
+	task.Task = globalTaskRequst.Task
+	task.Script = globalTaskRequst.Script
+
+	taskrepository.UpdateTask(task)
 	response.ResponseData(ctx, "")
 }

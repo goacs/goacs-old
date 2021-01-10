@@ -39,7 +39,42 @@ func (t *TasksRepository) AddTask(task tasks.Task) {
 	if err != nil {
 		log.Println("error AddTask ", err.Error())
 	}
+}
 
+func (t *TasksRepository) UpdateTask(task tasks.Task) {
+	dialect := goqu.Dialect("mysql")
+
+	query, args, _ := dialect.Update("tasks").Prepared(true).
+		Set(goqu.Record{
+			"for_name":   task.ForName,
+			"for_id":     task.ForID,
+			"event":      task.Event,
+			"task":       task.Task,
+			"not_before": task.NotBefore,
+			"script":     task.Script,
+			"infinite":   task.Infinite,
+		}).
+		Where(goqu.Ex{
+			"id": task.Id,
+		}).
+		ToSQL()
+
+	_, err := t.db.Exec(query, args...)
+
+	if err != nil {
+		log.Println("UpdateTask Error", err.Error())
+	}
+}
+
+func (t *TasksRepository) GetTask(id int64) tasks.Task {
+	var globalTask tasks.Task
+	err := t.db.Get(&globalTask, "SELECT * FROM tasks WHERE id=?", id)
+
+	if err != nil {
+		log.Println(err.Error())
+	}
+
+	return globalTask
 }
 
 func (t *TasksRepository) GetGlobalTasks() []tasks.Task {

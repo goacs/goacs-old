@@ -138,7 +138,9 @@ func ProcessTasks(reqRes *acshttp.CPERequest, event string) {
 		for _, cpeTask := range filteredTasks {
 			switch cpeTask.Task {
 			case tasks.RunScript:
-				_, _ = scriptEngine.Execute(cpeTask.Script)
+				result, err := scriptEngine.Execute(cpeTask.Script)
+				log.Println(err)
+				log.Println(result)
 			case tasks.SendParameters:
 				scriptEngine.SendParameters()
 			}

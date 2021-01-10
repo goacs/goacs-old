@@ -1,6 +1,7 @@
 package scripts
 
 import (
+	"fmt"
 	"github.com/mattn/anko/env"
 	"github.com/mattn/anko/vm"
 	acshttp "goacs/acs/http"
@@ -25,9 +26,14 @@ func NewScriptEngine(reqRes *acshttp.CPERequest) ScriptEngine {
 	}
 
 	_ = scriptEnv.Define("SetParameter", se.SetParameter)
+	_ = scriptEnv.Define("println", fmt.Println)
+	_ = scriptEnv.Define("GetParameterValue", se.GetParameterValue)
 	_ = scriptEnv.Define("SendParameters", se.SendParameters)
 	_ = scriptEnv.Define("SaveDevice", se.SaveDevice)
 	_ = scriptEnv.Define("AddObject", se.AddObject)
+	_ = scriptEnv.Define("SubString", se.SubString)
+	_ = scriptEnv.Define("Replace", se.Replace)
+	_ = scriptEnv.Define("StringContains", se.StringContains)
 
 	return se
 }

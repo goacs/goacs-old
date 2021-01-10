@@ -20,6 +20,24 @@ func (se *ScriptEngine) SetParameter(path string, value string, flags string) {
 	})
 }
 
+func (se *ScriptEngine) GetParameterValue(path string) string {
+	if value, err := se.ReqRes.Session.CPE.GetParameterValue(path); err == nil {
+		return value
+	}
+
+	cpeRepository := mysql.NewCPERepository(repository.GetConnection())
+	cpeParameters, _ := cpeRepository.GetCPEParameters(&se.ReqRes.Session.CPE)
+	se.ReqRes.Session.CPE.AddParameterValues(cpeParameters)
+
+	value, err := se.ReqRes.Session.CPE.GetParameterValue(path)
+
+	if err != nil {
+		return ""
+	}
+
+	return value
+}
+
 func (se *ScriptEngine) SaveDevice() {
 	cpeRepository := mysql.NewCPERepository(repository.GetConnection())
 	_ = cpeRepository.BulkInsertOrUpdateParameters(&se.ReqRes.Session.CPE, se.ReqRes.Session.CPE.ParameterValues)

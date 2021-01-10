@@ -48,6 +48,7 @@ func RegisterApiRoutes(gin *gin.Engine) {
 
 		apiGroup.GET("/tasks", controllers.GetGlobalTasks)
 		apiGroup.POST("/tasks", controllers.AddGlobalTask)
+		apiGroup.POST("/tasks/:taskid", controllers.UpdateGlobalTask)
 
 		apiGroup.GET("/faults/today", controllers.GetTodayFaults)
 

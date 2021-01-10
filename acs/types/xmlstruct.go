@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/xml"
+	"github.com/go-xmlfmt/xmlfmt"
 	"math/rand"
 	"reflect"
 	"strconv"
@@ -51,12 +52,21 @@ type PrioritizedParameters struct {
 	ParameterValueStruct
 }
 
+//TODO !!!!
+//Replace value, with struct to handle type
 type ParameterValueStruct struct {
 	Name  string `db:"name" json:"name"`
-	Value string `db:"value" json:"value"`
-	Type  string `xml:",attr" db:"type" json:"type"`
+	Value string `db:"value" json:"value"`           //backwards compatibility
+	Type  string `xml:",attr" db:"type" json:"type"` //backwards compatibility
 	Flag  Flag   `json:"flag" db:"flags"`
 }
+
+type ValueStruct struct {
+	XMLName xml.Name `xml:"Value"`
+	Value   string   `xml:",chardata"`
+	Type    string   `xml:",any,attr" db:"type" json:"type"`
+}
+
 type ParameterInfo struct {
 	Name     string `xml:"Name"`
 	Writable string `xml:"Writable"`
@@ -250,6 +260,9 @@ func (envelope *Envelope) GetRPCMethodsRequest() string {
 }
 
 func (envelope *Envelope) SetParameterValues(info []ParameterValueStruct) string {
+	if envelope.Header.ID == "" {
+		envelope.Header.ID = strconv.Itoa(rand.Int())
+	}
 	request := `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:cwmp="urn:dslforum-org:cwmp-1-0" xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <soapenv:Header>
@@ -260,20 +273,18 @@ func (envelope *Envelope) SetParameterValues(info []ParameterValueStruct) string
 			<ParameterList soap:arrayType="cwmp:ParameterValueStruct[` + strconv.Itoa(len(info)) + `]">
 `
 	for _, parameter := range info {
-		request += "<ParameterValueStruct>\n"
+		request += "<ParameterValueStruct>"
 		request += `<Name>` + parameter.Name + `</Name>`
-		request += "\n"
 		request += `<Value xsi:type="xsd:string">` + parameter.Value + `</Value>`
-		request += "\n"
-		request += "</ParameterValueStruct>\n"
+		request += "</ParameterValueStruct>"
 	}
 
 	request += `</ParameterList>
-		</cwmp:SetParameterValues>
+	</cwmp:SetParameterValues>
   </soapenv:Body>
 </soapenv:Envelope>`
 
-	return request
+	return xmlfmt.FormatXML(request, "", " ")
 }
 
 func (envelope *Envelope) AddObjectRequest(objectName string, parameterKey string) string {

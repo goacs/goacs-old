@@ -3,7 +3,6 @@ package methods
 import (
 	"encoding/xml"
 	"fmt"
-	"goacs/acs"
 	"goacs/acs/http"
 	acsxml "goacs/acs/types"
 	"goacs/models/cpe"
@@ -51,7 +50,6 @@ func (pd *ParameterDecisions) GetParameterValuesResponseParser() {
 	var gpvr acsxml.GetParameterValuesResponse
 	_ = xml.Unmarshal(pd.ReqRes.Body, &gpvr)
 	log.Println("GetParameterValuesResponseParser")
-
 	pd.ReqRes.Session.CPE.AddParameterValues(gpvr.ParameterList)
 	pd.ReqRes.Session.FillCPESessionBaseInfo(gpvr.ParameterList)
 	cpeRepository := mysql.NewCPERepository(repository.GetConnection())
@@ -86,7 +84,7 @@ func (pd *ParameterDecisions) SetParameterValuesRequest() {
 		diffParameters := pd.ReqRes.Session.CPE.GetChangedParametersToWrite(&cpeDBParameters)
 		if len(diffParameters) > 0 {
 			pd.ReqRes.Session.CPE.ParametersQueue = diffParameters
-			pd.ReqRes.Session.NextJob = acs.JOB_SENDPARAMETERS
+			//pd.ReqRes.Session.NextJob = acs.JOB_SENDPARAMETERS
 		}
 	}
 
@@ -94,6 +92,7 @@ func (pd *ParameterDecisions) SetParameterValuesRequest() {
 	if len(pd.ReqRes.Session.CPE.ParametersQueue) > 0 {
 		log.Println("SPV")
 		var response = pd.ReqRes.Envelope.SetParameterValues(pd.ReqRes.Session.CPE.PopParametersQueue())
+		log.Println(response)
 		_, _ = fmt.Fprint(pd.ReqRes.Response, response)
 		pd.ReqRes.Session.PrevReqType = acsxml.SPVResp
 	}
