@@ -35,6 +35,7 @@ func NewACSRequest(cpe *cpe.CPE) *ACSRequest {
 func (ACSRequest *ACSRequest) AddObject(param string) {
 	envelope := acsxml.NewEnvelope()
 	reqBody := envelope.AddObjectRequest(param, "")
+	log.Println(reqBody)
 
 	ACSRequest.Body = reqBody
 	err := ACSRequest.Send()

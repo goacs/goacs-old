@@ -1,7 +1,8 @@
 package types
 
 const (
-	INFORM     string = "inform"
+	InformReq  string = "inform"
+	InformResp string = "InformResponse"
 	EMPTY      string = "empty"
 	GPNResp    string = "GetParameterNamesResponse"
 	GPNReq     string = "GetParameterNames"
@@ -9,7 +10,8 @@ const (
 	GPVReq     string = "GetParameterValues"
 	GRPCMReq   string = "GetRPCMethods"
 	GRPCMResp  string = "GetRPCMethodsResponse"
-	SPVResp    string = "SetParameterValues"
+	SPVReq     string = "SetParameterValues"
+	SPVResp    string = "SetParameterValuesResponse"
 	FaultResp  string = "FaultResp"
 	AddObjReq  string = "AddObjectRequest"
 	AddObjResp string = "AddObjectResponse"

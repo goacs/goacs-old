@@ -1,10 +1,7 @@
 package scripts
 
 import (
-	"fmt"
-	"goacs/acs/methods"
 	"goacs/acs/types"
-	"goacs/models/cpe"
 	"goacs/repository"
 	"goacs/repository/mysql"
 	"strings"
@@ -12,12 +9,26 @@ import (
 
 func (se *ScriptEngine) SetParameter(path string, value string, flags string) {
 	flag, _ := types.FlagFromString(flags)
-	se.ReqRes.Session.CPE.AddParameter(types.ParameterValueStruct{
-		Name:  path,
-		Value: value,
-		Type:  "",
-		Flag:  flag,
-	})
+	parameter := types.ParameterValueStruct{
+		Name: path,
+		ValueStruct: types.ValueStruct{
+			Value: value,
+			Type:  "",
+		},
+		Flag: flag,
+	}
+
+	currentParameter := se.ReqRes.Session.CPE.GetParameter(path)
+
+	if currentParameter != nil {
+		parameter.ValueStruct.Type = currentParameter.ValueStruct.Type
+	}
+
+	se.ReqRes.Session.CPE.AddParameter(parameter)
+
+	if flag.System == false {
+		se.ReqRes.Session.CPE.ParametersQueue = append(se.ReqRes.Session.CPE.ParametersQueue, parameter)
+	}
 }
 
 func (se *ScriptEngine) GetParameterValue(path string) string {
@@ -41,23 +52,6 @@ func (se *ScriptEngine) GetParameterValue(path string) string {
 func (se *ScriptEngine) SaveDevice() {
 	cpeRepository := mysql.NewCPERepository(repository.GetConnection())
 	_ = cpeRepository.BulkInsertOrUpdateParameters(&se.ReqRes.Session.CPE, se.ReqRes.Session.CPE.ParameterValues)
-}
-
-func (se *ScriptEngine) AddObject(path string) {
-	reqBody := se.ReqRes.Envelope.AddObjectRequest(path, "")
-	_, _ = fmt.Fprint(se.ReqRes.Response, reqBody)
-}
-
-func (se *ScriptEngine) SendParameters() {
-	cpeRepository := mysql.NewCPERepository(repository.GetConnection())
-	templateRepository := mysql.NewTemplateRepository(repository.GetConnection())
-	allParameters, _ := cpeRepository.GetCPEParameters(&se.ReqRes.Session.CPE)
-	templateParameters := templateRepository.GetPrioritizedParametersForCPE(&se.ReqRes.Session.CPE)
-	writableParameters := types.GetParametersWithFlag(allParameters, "S")
-	writableParameters = cpe.CombineTemplateParameters(writableParameters, templateParameters)
-	se.ReqRes.Session.CPE.ParametersQueue = writableParameters
-	parameterDecisions := methods.ParameterDecisions{ReqRes: se.ReqRes}
-	parameterDecisions.SetParameterValuesRequest()
 }
 
 func (se *ScriptEngine) StringContains(text string, search string) bool {

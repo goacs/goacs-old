@@ -29,17 +29,20 @@ type CPE struct {
 }
 
 func (cpe *CPE) AddParameterInfo(parameter types.ParameterInfo) {
+	for index := range cpe.ParametersInfo {
+		if cpe.ParametersInfo[index].Name == parameter.Name {
+			cpe.ParametersInfo[index].Done = parameter.Done
+			cpe.ParametersInfo[index].Writable = parameter.Writable
+			return
+		}
+	}
+
 	cpe.ParametersInfo = append(cpe.ParametersInfo, parameter)
 }
 
 func (cpe *CPE) AddParametersInfo(parameters []types.ParameterInfo) {
 	for _, parameter := range parameters {
 		cpe.AddParameterInfo(parameter)
-		//TODO: Apply bool conversion
-		//cpe.UpdateParameterFlags(parameter.Name, types.Flag{
-		//	Read:  true,
-		//	Write: parameter.Writable == "1",
-		//})
 	}
 }
 
@@ -74,9 +77,11 @@ func (cpe *CPE) AddParameter(parameter types.ParameterValueStruct) {
 
 	for index := range cpe.ParameterValues {
 		if cpe.ParameterValues[index].Name == parameter.Name {
-			log.Println("Replacing parameter ", parameter.Name)
 			//Replace exist parameter
-			cpe.ParameterValues[index].Value = parameter.Value
+			cpe.ParameterValues[index].ValueStruct.Value = parameter.ValueStruct.Value
+			if parameter.ValueStruct.Type != "" {
+				cpe.ParameterValues[index].ValueStruct.Type = parameter.ValueStruct.Type
+			}
 			cpe.ParameterValues[index].Flag = parameter.Flag
 			return
 		}
@@ -139,10 +144,20 @@ func (cpe *CPE) ParameterValueExist(parameterName string) bool {
 	return false
 }
 
+func (cpe *CPE) GetParameter(parameterName string) *types.ParameterValueStruct {
+	for _, parameter := range cpe.ParameterValues {
+		if parameter.Name == parameterName {
+			return &parameter
+		}
+	}
+
+	return nil
+}
+
 func (cpe *CPE) GetParameterValue(parameterName string) (string, error) {
 	for index := range cpe.ParameterValues {
 		if cpe.ParameterValues[index].Name == parameterName {
-			return cpe.ParameterValues[index].Value, nil
+			return cpe.ParameterValues[index].ValueStruct.Value, nil
 		}
 	}
 
@@ -155,9 +170,11 @@ func (cpe *CPE) GetAddObjectParameters() []types.ParameterValueStruct {
 		// If Last character of parameter name is ".", then add it as AddObject to DB
 		if parameter.Name[len(parameter.Name)-1:] == "." && parameter.Writable == "1" {
 			filteredParameters = append(filteredParameters, types.ParameterValueStruct{
-				Name:  parameter.Name,
-				Value: "",
-				Type:  "",
+				Name: parameter.Name,
+				ValueStruct: types.ValueStruct{
+					Value: "",
+					Type:  "",
+				},
 				Flag: types.Flag{
 					Read:         true,
 					Write:        true,
@@ -212,9 +229,9 @@ func (cpe *CPE) GetChangedParametersToWrite(otherParameters *[]types.ParameterVa
 
 	for _, cpeParam := range cpe.ParameterValues {
 		for _, otherParam := range *otherParameters {
-			if otherParam.Flag.Write == true && otherParam.Name == cpeParam.Name && otherParam.Value != cpeParam.Value {
-				log.Println("other param", otherParam.Value)
-				log.Println("cpe param", cpeParam.Value)
+			if otherParam.Flag.Write == true && otherParam.Name == cpeParam.Name && otherParam.ValueStruct.Value != cpeParam.ValueStruct.Value {
+				log.Println("other param", otherParam.ValueStruct.Value)
+				log.Println("cpe param", cpeParam.ValueStruct.Value)
 				parametersDiff = append(parametersDiff, otherParam)
 				break
 			}

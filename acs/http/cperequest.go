@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"github.com/jmoiron/sqlx"
 	"goacs/acs"
 	acsxml "goacs/acs/types"
@@ -14,4 +15,10 @@ type CPERequest struct {
 	Session      *acs.ACSSession
 	Envelope     *acsxml.Envelope
 	Body         []byte
+	ReqType      string
+}
+
+func (r *CPERequest) SendResponse(body string) {
+	//log.Println(body)
+	_, _ = fmt.Fprint(r.Response, body)
 }

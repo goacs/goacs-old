@@ -137,10 +137,12 @@ func UpdateTemplateParameter(ctx *gin.Context) {
 	templatesRepository := mysql.NewTemplateRepository(repository.GetConnection())
 	err = templatesRepository.UpdateParameter(templatePURequest.ParameterUUID,
 		types.ParameterValueStruct{
-			Name:  templatePURequest.Name,
-			Value: templatePURequest.Value,
-			Type:  "",
-			Flag:  templatePURequest.Flag,
+			Name: templatePURequest.Name,
+			ValueStruct: types.ValueStruct{
+				Value: templatePURequest.Value,
+				Type:  "",
+			},
+			Flag: templatePURequest.Flag,
 		},
 	)
 
@@ -172,10 +174,12 @@ func StoreTemplateParameter(ctx *gin.Context) {
 	templatesRepository := mysql.NewTemplateRepository(repository.GetConnection())
 	err = templatesRepository.CreateParameter(templatePSRequest.TemplateId,
 		types.ParameterValueStruct{
-			Name:  templatePSRequest.Name,
-			Value: templatePSRequest.Value,
-			Type:  "",
-			Flag:  templatePSRequest.Flag,
+			Name: templatePSRequest.Name,
+			ValueStruct: types.ValueStruct{
+				Value: templatePSRequest.Value,
+				Type:  "",
+			},
+			Flag: templatePSRequest.Flag,
 		},
 	)
 

@@ -216,10 +216,12 @@ func parameterBaseRequest(ctx *gin.Context) types.ParameterValueStruct {
 	}
 
 	return types.ParameterValueStruct{
-		Name:  parameterRequest.Name,
-		Value: parameterRequest.Value,
-		Type:  "",
-		Flag:  parameterRequest.Flag,
+		Name: parameterRequest.Name,
+		ValueStruct: types.ValueStruct{
+			Value: parameterRequest.Value,
+			Type:  "",
+		},
+		Flag: parameterRequest.Flag,
 	}
 }
 

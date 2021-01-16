@@ -182,14 +182,15 @@ func (r *CPERepository) UpdateOrCreate(cpe *cpe.CPE) (result bool, cpeExist bool
 }
 
 func (r *CPERepository) FindParameter(cpe *cpe.CPE, parameterKey string) (*types.ParameterValueStruct, error) {
-	parameterValueStruct := new(types.ParameterValueStruct)
-	err := r.db.Unsafe().Get(parameterValueStruct, "SELECT *  FROM cpe_parameters WHERE cpe_uuid=? AND name=? LIMIT 1", cpe.UUID, parameterKey)
+	row := r.db.Unsafe().QueryRowx("SELECT *  FROM cpe_parameters WHERE cpe_uuid=? AND name=? LIMIT 1", cpe.UUID, parameterKey)
 
-	if err == sql.ErrNoRows {
+	if row.Err() == sql.ErrNoRows {
 		return nil, repository.ErrNotFound
 	}
 
-	return parameterValueStruct, nil
+	parameterValueStruct := parameterRowParser(row)
+
+	return &parameterValueStruct, nil
 }
 
 func (r *CPERepository) CreateParameter(cpe *cpe.CPE, parameter types.ParameterValueStruct) (bool, error) {
@@ -201,9 +202,9 @@ func (r *CPERepository) CreateParameter(cpe *cpe.CPE, parameter types.ParameterV
 	_, err := stmt.Exec(
 		cpe.UUID,
 		parameter.Name,
-		parameter.Value,
-		parameter.Type,            //TODO: NORMALIZE
-		parameter.Flag.AsString(), //TODO: Flags support (R - Read, W - Write and more...)
+		parameter.ValueStruct.Value,
+		parameter.ValueStruct.Type, //TODO: NORMALIZE
+		parameter.Flag.AsString(),  //TODO: Flags support (R - Read, W - Write and more...)
 		time.Now(),
 		time.Now(),
 	)
@@ -232,8 +233,8 @@ func (r *CPERepository) BulkInsertOrUpdateParameters(cpe *cpe.CPE, parameters []
 			valueStrings = append(valueStrings, "(?, ?, ?, ?, ?)")
 			valueArgs = append(valueArgs, cpe.UUID)
 			valueArgs = append(valueArgs, parameter.Name)
-			valueArgs = append(valueArgs, parameter.Value)
-			valueArgs = append(valueArgs, parameter.Type)
+			valueArgs = append(valueArgs, parameter.ValueStruct.Value)
+			valueArgs = append(valueArgs, parameter.ValueStruct.Type)
 			valueArgs = append(valueArgs, parameter.Flag.AsString())
 		}
 
@@ -282,8 +283,8 @@ func (r *CPERepository) UpdateParameter(cpe *cpe.CPE, parameter types.ParameterV
 	//log.Println("Parameter flags ", parameter.Flag.AsString())
 
 	_, err = stmt.Exec(
-		parameter.Value,
-		parameter.Type,
+		parameter.ValueStruct.Value,
+		parameter.ValueStruct.Type,
 		parameter.Flag.AsString(),
 		time.Now(),
 		cpe.UUID,
@@ -336,7 +337,7 @@ func (r *CPERepository) SaveParameters(cpe *cpe.CPE) (bool, error) {
 func (r *CPERepository) GetCPEParameters(cpe *cpe.CPE) ([]types.ParameterValueStruct, error) {
 	var parameters = []types.ParameterValueStruct{}
 
-	err := r.db.Select(&parameters, "SELECT * FROM cpe_parameters WHERE cpe_uuid=?", cpe.UUID)
+	rows, err := r.db.Queryx("SELECT * FROM cpe_parameters WHERE cpe_uuid=?", cpe.UUID)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -345,6 +346,7 @@ func (r *CPERepository) GetCPEParameters(cpe *cpe.CPE) ([]types.ParameterValueSt
 		return nil, repository.ErrNotFound
 	}
 
+	parameters = parametersRowsParser(rows)
 	return parameters, nil
 }
 
@@ -368,7 +370,7 @@ func (r *CPERepository) ListCPEParameters(cpe *cpe.CPE, request repository.Pagin
 
 	var total int
 	_ = r.db.Get(&total, totalSql)
-	parameters := make([]types.ParameterValueStruct, 0)
+	var parameters []types.ParameterValueStruct
 	parametersBuilder := baseBulder.
 		Offset(uint(request.CalcOffset())).
 		Limit(uint(request.PerPage))
@@ -379,7 +381,7 @@ func (r *CPERepository) ListCPEParameters(cpe *cpe.CPE, request repository.Pagin
 
 	log.Println(parametersSql)
 
-	err := r.db.Unsafe().Select(&parameters, parametersSql)
+	rows, err := r.db.Unsafe().Queryx(parametersSql)
 
 	if err != nil {
 		fmt.Println("Error while fetching query results")
@@ -387,6 +389,7 @@ func (r *CPERepository) ListCPEParameters(cpe *cpe.CPE, request repository.Pagin
 		return nil, 0
 	}
 
+	parameters = parametersRowsParser(rows)
 	return parameters, total
 }
 
@@ -410,4 +413,38 @@ func (r *CPERepository) DeleteAllParameters(cpe *cpe.CPE) {
 	if err != nil {
 		log.Println("Cannot delete device ", err)
 	}
+}
+
+func parameterRowParser(row *sqlx.Row) types.ParameterValueStruct {
+	var parameter types.ParameterValueStruct
+	mapScan := make(map[string]interface{})
+	_ = row.StructScan(&parameter)
+	_ = row.MapScan(mapScan)
+
+	if mapScan["value"] != nil {
+		parameter.ValueStruct.Value = string(mapScan["value"].([]byte))
+	}
+
+	if mapScan["type"] != nil {
+		parameter.ValueStruct.Type = string(mapScan["type"].([]byte))
+	}
+	return parameter
+}
+
+func parametersRowsParser(rows *sqlx.Rows) []types.ParameterValueStruct {
+	var parameters []types.ParameterValueStruct
+	for rows.Next() {
+		mapScan := make(map[string]interface{})
+		var parameter types.ParameterValueStruct
+
+		_ = rows.StructScan(&parameter)
+		_ = rows.MapScan(mapScan)
+
+		parameter.ValueStruct.Value = string(mapScan["value"].([]byte))
+		parameter.ValueStruct.Type = string(mapScan["type"].([]byte))
+
+		parameters = append(parameters, parameter)
+	}
+
+	return parameters
 }

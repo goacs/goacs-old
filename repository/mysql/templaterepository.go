@@ -144,7 +144,7 @@ func (r *TemplateRepository) GetPrioritizedParametersForCPE(cpe *cpe.CPE) []type
 		Where(goqu.Ex{"c2t.cpe_uuid": cpe.UUID}).
 		Order(goqu.I("c2t.priority").Asc()).ToSQL()
 
-	log.Println("GetPrioritizedParametersForCPE", orderedTemplatesIdsQuery)
+	//log.Println("GetPrioritizedParametersForCPE", orderedTemplatesIdsQuery)
 	err := r.db.Select(&prioParams, orderedTemplatesIdsQuery, args...)
 
 	if err != nil {
@@ -280,7 +280,7 @@ func (r *TemplateRepository) CreateParameter(template_id int64, parameter types.
 			uuidString,
 			template_id,
 			parameter.Name,
-			parameter.Value,
+			parameter.ValueStruct.Value,
 			"",
 			parameter.Flag.AsString(),
 			time.Now(),
@@ -303,7 +303,7 @@ func (r *TemplateRepository) UpdateParameter(parameter_uuid string, parameter ty
 	query, args, _ := dialect.Update("templates_parameters").Prepared(true).
 		Set(goqu.Record{
 			"name":       parameter.Name,
-			"value":      parameter.Value,
+			"value":      parameter.ValueStruct.Value,
 			"flags":      parameter.Flag.AsString(),
 			"updated_at": time.Now(),
 		}).

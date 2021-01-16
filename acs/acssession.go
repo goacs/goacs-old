@@ -1,6 +1,8 @@
 package acs
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	digest_auth_client "github.com/xinsnake/go-http-digest-auth-client"
 	"goacs/acs/types"
@@ -28,6 +30,7 @@ type ACSSession struct {
 	IsNewInACS        bool
 	IsBoot            bool
 	IsBootstrap       bool
+	Provision         bool
 	ReadAllParameters bool
 	PrevReqType       string
 	CreatedAt         time.Time
@@ -38,6 +41,14 @@ type ACSSession struct {
 
 var lock = sync.RWMutex{}
 var acsSessions map[string]*ACSSession
+
+func GenerateSessionId() string {
+	buff := make([]byte, 32)
+	rand.Read(buff)
+	str := hex.EncodeToString(buff)
+	// Base 64 can be longer than len
+	return str[:32]
+}
 
 func StartSession() {
 	fmt.Println("acsSessions init")
@@ -62,10 +73,13 @@ func GetSessionFromRequest(request *http.Request) *ACSSession {
 }
 
 func GetSessionById(sessionId string) *ACSSession {
-	fmt.Println("Trying to retive session from memory " + sessionId)
 	lock.RLock()
 	session := acsSessions[sessionId]
 	lock.RUnlock()
+
+	if session != nil {
+		log.Println("Session from memory ", sessionId)
+	}
 
 	return session
 }
@@ -143,4 +157,8 @@ func (session *ACSSession) FillCPESessionBaseInfo(parameters []types.ParameterVa
 	session.CPE.SoftwareVersion, _ = session.CPE.GetParameterValue(session.CPE.Root + ".DeviceInfo.SoftwareVersion")
 	ipAddrStr, _ := session.CPE.GetParameterValue(session.CPE.Root + "..WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.ExternalIPAddress")
 	_ = session.CPE.IpAddress.Scan(ipAddrStr)
+}
+
+func (session *ACSSession) AddTask(task tasks.Task) {
+	session.Tasks = append(session.Tasks, task)
 }

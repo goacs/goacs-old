@@ -2,8 +2,9 @@ package types
 
 import (
 	"encoding/xml"
-	"github.com/go-xmlfmt/xmlfmt"
+	"log"
 	"math/rand"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -55,21 +56,22 @@ type PrioritizedParameters struct {
 //TODO !!!!
 //Replace value, with struct to handle type
 type ParameterValueStruct struct {
-	Name  string `db:"name" json:"name"`
-	Value string `db:"value" json:"value"`           //backwards compatibility
-	Type  string `xml:",attr" db:"type" json:"type"` //backwards compatibility
-	Flag  Flag   `json:"flag" db:"flags"`
+	Name        string      `db:"name" json:"name"`
+	ValueStruct ValueStruct `json:"valuestruct"`
+	Flag        Flag        `json:"flag" db:"flags"`
+	Done        bool        //Only for GPV chunking
 }
 
 type ValueStruct struct {
-	XMLName xml.Name `xml:"Value"`
-	Value   string   `xml:",chardata"`
-	Type    string   `xml:",any,attr" db:"type" json:"type"`
+	XMLName xml.Name `xml:"Value" json:"-"`
+	Value   string   `xml:",chardata" db:"value" json:"value"`
+	Type    string   `xml:"type,attr" db:"type" json:"type"`
 }
 
 type ParameterInfo struct {
 	Name     string `xml:"Name"`
 	Writable string `xml:"Writable"`
+	Done     bool   //Only for GPN NextLevel
 }
 
 type DeviceId struct {
@@ -206,7 +208,13 @@ func (inform *Inform) IsBootEvent() bool {
 	return false
 }
 
-func (envelope *Envelope) GPNRequest(path string) string {
+func (envelope *Envelope) GPNRequest(path string, nextlevel bool) string {
+	nextlevelstring := "false"
+
+	if nextlevel {
+		nextlevelstring = "true"
+	}
+
 	return `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:cwmp="urn:dslforum-org:cwmp-1-0" xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <soapenv:Header>
@@ -215,7 +223,7 @@ func (envelope *Envelope) GPNRequest(path string) string {
     <soapenv:Body>
         <cwmp:GetParameterNames>
 			<ParameterPath>` + path + `</ParameterPath>
-			<NextLevel>false</NextLevel>
+			<NextLevel>` + nextlevelstring + `</NextLevel>
 		</cwmp:GetParameterNames>
     </soapenv:Body>
 </soapenv:Envelope>`
@@ -275,16 +283,17 @@ func (envelope *Envelope) SetParameterValues(info []ParameterValueStruct) string
 	for _, parameter := range info {
 		request += "<ParameterValueStruct>"
 		request += `<Name>` + parameter.Name + `</Name>`
-		request += `<Value xsi:type="xsd:string">` + parameter.Value + `</Value>`
+		request += `<Value xsi:type="` + parameter.ValueStruct.Type + `">` + parameter.ValueStruct.Value + `</Value>`
 		request += "</ParameterValueStruct>"
 	}
 
 	request += `</ParameterList>
+	<ParameterKey></ParameterKey>
 	</cwmp:SetParameterValues>
   </soapenv:Body>
 </soapenv:Envelope>`
 
-	return xmlfmt.FormatXML(request, "", " ")
+	return request
 }
 
 func (envelope *Envelope) AddObjectRequest(objectName string, parameterKey string) string {
@@ -333,3 +342,22 @@ func (envelope *Envelope) DownloadRequest() string {
     </soapenv:Body>
 </soapenv:Envelope>`
 }
+
+func PrintParamsInfo(params []ParameterInfo, serial string) {
+	f, err := os.OpenFile("paramsinfo_"+serial+".log", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0660)
+	if err != nil {
+		log.Println("error while opening file ", err.Error())
+		return
+	}
+
+	for _, param := range params {
+		_, _ = f.WriteString(param.Name + " DONE " + strconv.FormatBool(param.Done) + " WRITABLE " + param.Writable + "\r\n")
+		f.Sync()
+	}
+}
+
+type SortParamsInfo []ParameterInfo
+
+func (a SortParamsInfo) Len() int           { return len(a) }
+func (a SortParamsInfo) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a SortParamsInfo) Less(i, j int) bool { return len(a[i].Name) < len(a[j].Name) }

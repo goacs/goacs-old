@@ -88,15 +88,15 @@ func (t *TasksRepository) GetGlobalTasks() []tasks.Task {
 	return globalTasks
 }
 
-func (t *TasksRepository) GetGlobalTask(id string) []tasks.Task {
-	var globalTasks []tasks.Task
-	err := t.db.Select(&globalTasks, "SELECT * FROM tasks WHERE for_name=? AND for_id=? AND (done_at is null or infinite = true)", tasks.TASK_GLOBAL, id)
+func (t *TasksRepository) GetGlobalTask(id string) tasks.Task {
+	var globalTask tasks.Task
+	err := t.db.Get(&globalTask, "SELECT * FROM tasks WHERE for_name=? AND for_id=? AND (done_at is null or infinite = true)", tasks.TASK_GLOBAL, id)
 
 	if err != nil {
 		log.Println(err.Error())
 	}
 
-	return globalTasks
+	return globalTask
 }
 
 func (t *TasksRepository) GetTasksForCPE(cpe_uuid string) []tasks.Task {

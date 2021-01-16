@@ -21,21 +21,26 @@ func CPERequestDecision(request *http.Request, w http.ResponseWriter) {
 	buffer, err := ioutil.ReadAll(request.Body)
 	//session := acs.CreateSession(request)
 
-	//w = acs.AddCookieToResponseWriter(session, w)
+	session := acs.GetSessionFromRequest(request)
+
+	if session == nil {
+		session = acs.CreateEmptySession(acs.GenerateSessionId())
+	}
 
 	if err != io.EOF && err != nil {
 		return
 	}
 
-	reqType, envelope := parseEnvelope(buffer)
+	reqType, envelope := parseBody(buffer)
 
 	var reqRes = acshttp.CPERequest{
 		Request:      request,
 		Response:     w,
 		DBConnection: repository.GetConnection(),
-		Session:      acs.GetSessionFromRequest(request),
+		Session:      session,
 		Envelope:     &envelope,
 		Body:         buffer,
+		ReqType:      reqType,
 	}
 
 	if reqRes.Session != nil {
@@ -43,42 +48,29 @@ func CPERequestDecision(request *http.Request, w http.ResponseWriter) {
 	}
 
 	switch reqType {
-	case acsxml.INFORM:
+	case acsxml.InformReq:
 		informDecision := methods.InformDecision{&reqRes}
 		informDecision.CpeInformRequestParser()
-		informDecision.CpeInformResponse()
 
 	case acsxml.EMPTY:
 		log.Println("EMPTY RESPONSE")
-		if reqRes.Session.PrevReqType == acsxml.INFORM {
-			if reqRes.Session.ReadAllParameters == true {
-				reqRes.Session.NextJob = acs.JOB_GETPARAMETERNAMES
-			}
+		if len(session.Tasks) == 0 {
+			acs.DeleteSession(session.Id)
 		}
 
 	case acsxml.GPNResp:
 		parameterDecisions := methods.ParameterDecisions{ReqRes: &reqRes}
 		parameterDecisions.CpeParameterNamesResponseParser()
-		reqRes.Session.NextJob = acs.JOB_GETPARAMETERVALUES
-		log.Println("GPNResponse next job", reqRes.Session.NextJob)
 
 	case acsxml.GPVResp:
 		parameterDecisions := methods.ParameterDecisions{ReqRes: &reqRes}
 		parameterDecisions.GetParameterValuesResponseParser()
 
-	case acsxml.SPVResp:
-		paramaterDecisions := methods.ParameterDecisions{ReqRes: &reqRes}
-		paramaterDecisions.SetParameterValuesRequest()
-
 	case acsxml.AddObjResp:
 		log.Println("AddObjResp")
+		log.Println(string(reqRes.Body))
 		paramaterDecisions := methods.ParameterDecisions{ReqRes: &reqRes}
-		addObjectResponseStruct := paramaterDecisions.AddObjectResponseParser()
-
-		if addObjectResponseStruct.Status == 0 {
-			//TODO: make to get only parameters that was created by addObject
-			reqRes.Session.NextJob = acs.JOB_GETPARAMETERNAMES
-		}
+		paramaterDecisions.AddObjectResponseParser()
 
 	case acsxml.FaultResp:
 		var faultresponse acsxml.Fault
@@ -86,73 +78,96 @@ func CPERequestDecision(request *http.Request, w http.ResponseWriter) {
 		reqRes.Session.CPE.Fault = faultresponse
 		faultDecision := methods.FaultDecision{ReqRes: &reqRes}
 		faultDecision.ResponseDecision()
+		if len(session.Tasks) == 0 {
+			acs.DeleteSession(session.Id)
+		}
 
 	default:
 		fmt.Println("UNSUPPORTED REQTYPE ", reqType)
 	}
 
+	if session.Provision == true {
+		parameterDecisions := methods.ParameterDecisions{ReqRes: &reqRes}
+		parameterDecisions.PrepareParametersToSend()
+	}
+
 	ProcessTasks(&reqRes, reqType)
-	ProcessSessionJobs(&reqRes)
 
 }
 
-func ProcessSessionJobs(reqRes *acshttp.CPERequest) {
-	log.Println("Processing next job", reqRes.Session.NextJob)
-	switch reqRes.Session.NextJob {
-	case acs.JOB_SENDPARAMETERS:
-		parameterDecisions := methods.ParameterDecisions{ReqRes: reqRes}
-		parameterDecisions.SetParameterValuesRequest()
-		reqRes.Session.NextJob = acs.JOB_NONE
+func ProcessTasks(reqRes *acshttp.CPERequest, event string) {
+	tasksRepository := mysql.NewTasksRepository(reqRes.DBConnection)
+	cpeDatabaseTasks := tasksRepository.GetTasksForCPE(reqRes.Session.CPE.UUID)
 
-	case acs.JOB_GETPARAMETERNAMES:
-		parameterDecisions := methods.ParameterDecisions{ReqRes: reqRes}
-		parameterDecisions.ParameterNamesRequest(true)
-		reqRes.Session.NextJob = acs.JOB_GETPARAMETERVALUES
+	if reqRes.Session.IsNewInACS == true && event == acsxml.GPVResp {
+		newDeviceTask := tasksRepository.GetGlobalTask("new")
+		reqRes.Session.AddTask(newDeviceTask)
+	}
 
-	case acs.JOB_GETPARAMETERVALUES:
-		log.Println("JOB_GETPARAMETERVALUES ROOT", reqRes.Session.CPE.Root)
-		parameterDecision := methods.ParameterDecisions{ReqRes: reqRes}
-		parameterDecision.GetParameterValuesRequest([]acsxml.ParameterInfo{
+	if len(cpeDatabaseTasks) > 0 {
+		filteredTasks := tasks.FilterTasksByEvent(event, cpeDatabaseTasks)
+		for _, cpeTask := range filteredTasks {
+			reqRes.Session.AddTask(cpeTask)
+		}
+	}
+
+	if len(reqRes.Session.Tasks) > 0 {
+		for _, task := range reqRes.Session.Tasks {
+			//log.Println("TASKS", reqRes.Session.Tasks)
+			reqRes.Session.Tasks = reqRes.Session.Tasks[1:]
+			waitForResponse := ProcessTask(task, reqRes)
+			if waitForResponse == false {
+				ProcessTasks(reqRes, event)
+			} else {
+				return
+			}
+		}
+	}
+
+}
+
+func ProcessTask(task tasks.Task, reqRes *acshttp.CPERequest) bool {
+	log.Println("Processing task: ", task.Task)
+	if task.Task == tasks.RunScript {
+		scriptEngine := scripts.NewScriptEngine(reqRes)
+		_, err := scriptEngine.Execute(task.Script)
+		log.Println(err)
+		parameterDecisions := methods.ParameterDecisions{ReqRes: reqRes}
+		parameterDecisions.PrepareParametersToSend()
+		//log.Println("TASK QUEUE", reqRes.Session.Tasks)
+
+		return false
+	} else if task.Task == acsxml.InformResp {
+		informMethods := methods.InformDecision{ReqRes: reqRes}
+		body := informMethods.CpeInformResponse()
+		reqRes.SendResponse(body)
+	} else if task.Task == acsxml.GPNReq {
+		parameterMethods := methods.ParameterDecisions{ReqRes: reqRes}
+		body := parameterMethods.ParameterNamesRequest(task.ParameterInfo[0].Name, false)
+		reqRes.SendResponse(body)
+	} else if task.Task == acsxml.GPVReq {
+		parameterMethods := methods.ParameterDecisions{ReqRes: reqRes}
+		body := parameterMethods.GetParameterValuesRequest([]acsxml.ParameterInfo{
 			{
 				Name:     reqRes.Session.CPE.Root + ".",
 				Writable: "0",
 			},
 		})
-		reqRes.Session.NextJob = acs.JOB_NONE
+		reqRes.SendResponse(body)
+	} else if task.Task == acsxml.SPVReq {
+		body := reqRes.Envelope.SetParameterValues(reqRes.Session.CPE.PopParametersQueue())
+		reqRes.SendResponse(body)
 	}
+
+	if task.Id != 0 && task.Infinite == false {
+		tasksRepository := mysql.NewTasksRepository(reqRes.DBConnection)
+		tasksRepository.DoneTask(task.Id)
+	}
+
+	return true
 }
 
-func ProcessTasks(reqRes *acshttp.CPERequest, event string) {
-	tasksRepository := mysql.NewTasksRepository(reqRes.DBConnection)
-	cpeTasks := tasksRepository.GetTasksForCPE(reqRes.Session.CPE.UUID)
-
-	if reqRes.Session.IsNewInACS == true && event == acsxml.GPVResp {
-		tasksForNewDevices := tasksRepository.GetGlobalTask("new")
-		log.Println(tasksForNewDevices)
-		cpeTasks = append(cpeTasks, tasksForNewDevices...)
-	}
-
-	if len(cpeTasks) > 0 {
-		scriptEngine := scripts.NewScriptEngine(reqRes)
-		filteredTasks := tasks.FilterTasksByEvent(event, cpeTasks)
-		for _, cpeTask := range filteredTasks {
-			switch cpeTask.Task {
-			case tasks.RunScript:
-				result, err := scriptEngine.Execute(cpeTask.Script)
-				log.Println(err)
-				log.Println(result)
-			case tasks.SendParameters:
-				scriptEngine.SendParameters()
-			}
-
-			if cpeTask.Infinite == false {
-				tasksRepository.DoneTask(cpeTask.Id)
-			}
-		}
-	}
-}
-
-func parseEnvelope(buffer []byte) (string, acsxml.Envelope) {
+func parseBody(buffer []byte) (string, acsxml.Envelope) {
 	//fmt.Println(string(buffer))
 	var envelope acsxml.Envelope
 	err := xml.Unmarshal(buffer, &envelope)
@@ -162,7 +177,7 @@ func parseEnvelope(buffer []byte) (string, acsxml.Envelope) {
 	if err == nil {
 		switch envelope.Type() {
 		case "inform":
-			requestType = acsxml.INFORM
+			requestType = acsxml.InformReq
 		case "getparameternamesresponse":
 			requestType = acsxml.GPNResp
 		case "getparametervaluesresponse":
