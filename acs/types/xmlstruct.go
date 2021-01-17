@@ -288,11 +288,11 @@ func (envelope *Envelope) SetParameterValues(info []ParameterValueStruct) string
 	}
 
 	request += `</ParameterList>
-	<ParameterKey></ParameterKey>
 	</cwmp:SetParameterValues>
   </soapenv:Body>
 </soapenv:Envelope>`
 
+	log.Println(request)
 	return request
 }
 
@@ -361,3 +361,10 @@ type SortParamsInfo []ParameterInfo
 func (a SortParamsInfo) Len() int           { return len(a) }
 func (a SortParamsInfo) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a SortParamsInfo) Less(i, j int) bool { return len(a[i].Name) < len(a[j].Name) }
+
+func ChunkParameterInfo(items []ParameterInfo, size int) (chunks [][]ParameterInfo) {
+	for size < len(items) {
+		items, chunks = items[size:], append(chunks, items[0:size:size])
+	}
+	return append(chunks, items)
+}

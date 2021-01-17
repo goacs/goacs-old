@@ -101,7 +101,9 @@ func ProcessTasks(reqRes *acshttp.CPERequest, event string) {
 
 	if reqRes.Session.IsNewInACS == true && event == acsxml.GPVResp {
 		newDeviceTask := tasksRepository.GetGlobalTask("new")
-		reqRes.Session.AddTask(newDeviceTask)
+		if reqRes.Session.TaskExist(newDeviceTask) == false {
+			reqRes.Session.AddTask(newDeviceTask)
+		}
 	}
 
 	if len(cpeDatabaseTasks) > 0 {
@@ -147,12 +149,7 @@ func ProcessTask(task tasks.Task, reqRes *acshttp.CPERequest) bool {
 		reqRes.SendResponse(body)
 	} else if task.Task == acsxml.GPVReq {
 		parameterMethods := methods.ParameterDecisions{ReqRes: reqRes}
-		body := parameterMethods.GetParameterValuesRequest([]acsxml.ParameterInfo{
-			{
-				Name:     reqRes.Session.CPE.Root + ".",
-				Writable: "0",
-			},
-		})
+		body := parameterMethods.GetParameterValuesRequest(task.ParameterInfo)
 		reqRes.SendResponse(body)
 	} else if task.Task == acsxml.SPVReq {
 		body := reqRes.Envelope.SetParameterValues(reqRes.Session.CPE.PopParametersQueue())
@@ -168,6 +165,7 @@ func ProcessTask(task tasks.Task, reqRes *acshttp.CPERequest) bool {
 }
 
 func parseBody(buffer []byte) (string, acsxml.Envelope) {
+	log.Println("Parsing body")
 	//fmt.Println(string(buffer))
 	var envelope acsxml.Envelope
 	err := xml.Unmarshal(buffer, &envelope)
@@ -193,6 +191,6 @@ func parseBody(buffer []byte) (string, acsxml.Envelope) {
 			requestType = acsxml.UNKNOWN
 		}
 	}
-
+	log.Println("body parsed")
 	return requestType, envelope
 }

@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"github.com/jmoiron/sqlx"
 	dac "github.com/xinsnake/go-http-digest-auth-client"
 	"goacs/acs"
@@ -80,6 +81,7 @@ func (acsRequest *ACSRequest) Send() error {
 		Timeout: time.Second * 5,
 	}
 
+	request.Header.Add("Set-Cookie", fmt.Sprintf("%s=%s; ", "sessionId", acsRequest.Session.Id))
 	request.HTTPClient = &client
 
 	response, err := request.Execute()

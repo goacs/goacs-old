@@ -9,7 +9,11 @@ import (
 	"goacs/repository"
 	"goacs/repository/mysql"
 	"log"
+	"strings"
 )
+
+const MAX_GPN_REQUESTS = 15
+const MAX_CHUNK_SIZE = 1
 
 type ParameterDecisions struct {
 	ReqRes *http.CPERequest
@@ -21,7 +25,7 @@ func (pd *ParameterDecisions) ParameterNamesRequest(path string, nextlevel bool)
 }
 
 func (pd *ParameterDecisions) CpeParameterNamesResponseParser() {
-	acsxml.PrintParamsInfo(pd.ReqRes.Session.CPE.ParametersInfo, pd.ReqRes.Session.CPE.SerialNumber)
+	//acsxml.PrintParamsInfo(pd.ReqRes.Session.CPE.ParametersInfo, pd.ReqRes.Session.CPE.SerialNumber)
 
 	var gpnr acsxml.GetParameterNamesResponse
 	log.Println("CpeParameterNamesResponseParser")
@@ -32,33 +36,67 @@ func (pd *ParameterDecisions) CpeParameterNamesResponseParser() {
 	cpeRepository := mysql.NewCPERepository(repository.GetConnection())
 	_ = cpeRepository.BulkInsertOrUpdateParameters(&pd.ReqRes.Session.CPE, pd.ReqRes.Session.CPE.GetAddObjectParameters())
 
-	nextLevelParams := pd.getNextLevelParams()
-	if len(nextLevelParams) > 0 {
+	nextLevelParams := pd.GetNextLevelParams(pd.ReqRes.Session.CPE.ParametersInfo)
+	log.Println(nextLevelParams)
+
+	if pd.ReqRes.Session.GPNCount < MAX_GPN_REQUESTS && len(nextLevelParams) > 0 {
 		for _, nextLevelParam := range nextLevelParams {
-			task := tasks.NewCPETask(pd.ReqRes.Session.CPE.UUID)
-			task.Task = acsxml.GPNReq
-			task.ParameterInfo = append(task.ParameterInfo, acsxml.ParameterInfo{
+			if pd.ReqRes.Session.GPNCount > MAX_GPN_REQUESTS {
+				continue
+			}
+
+			parameterInfo := acsxml.ParameterInfo{
 				Name:     nextLevelParam.Name,
 				Writable: nextLevelParam.Writable,
 				Done:     false,
-			})
+			}
+
+			task := tasks.NewCPETask(pd.ReqRes.Session.CPE.UUID)
+			task.Task = acsxml.GPNReq
+			task.ParameterInfo = append(task.ParameterInfo, parameterInfo)
 			pd.ReqRes.Session.AddTask(task)
+			pd.ReqRes.Session.AddParameterNamesToQueryValues(parameterInfo)
+			pd.ReqRes.Session.GPNCount++
+			log.Println("CURRENT GPN COUNT", pd.ReqRes.Session.GPNCount)
 			log.Println("added task", task)
 		}
 
 		return //if we have nextLevelParams, then prevent GPVReq add task
 	}
-
-	//if pd.ReqRes.Session.IsNewInACS {
-	//	log.Println("adding gpvreq for new device")
-	//	task := tasks.NewCPETask(pd.ReqRes.Session.CPE.UUID)
-	//	task.Task = acsxml.GPVReq
-	//	pd.ReqRes.Session.AddTask(task)
-	//}
+	log.Println("Current GPN tasks", pd.ReqRes.Session.Tasks)
+	if pd.ReqRes.Session.IsNewInACS && len(pd.ReqRes.Session.Tasks) == 0 {
+		log.Println("ADDING GPVREQ for these params", pd.ReqRes.Session.ParameterNamesToQueryValues)
+		for _, parameterNames := range acsxml.ChunkParameterInfo(pd.ReqRes.Session.ParameterNamesToQueryValues, MAX_CHUNK_SIZE) {
+			log.Println("adding gpvreq for new device")
+			task := tasks.NewCPETask(pd.ReqRes.Session.CPE.UUID)
+			task.Task = acsxml.GPVReq
+			task.ParameterInfo = parameterNames
+			pd.ReqRes.Session.AddTask(task)
+		}
+	}
 
 }
 
-func (pd *ParameterDecisions) getNextLevelParams() []acsxml.ParameterInfo {
+func (pd *ParameterDecisions) GetNextLevelParams(params []acsxml.ParameterInfo) []acsxml.ParameterInfo {
+	var newParams []acsxml.ParameterInfo
+	for idx, param := range params {
+		if needsToQueryParam(param) {
+			pd.ReqRes.Session.CPE.ParametersInfo[idx].Done = true
+			newParams = append(newParams, param)
+		}
+	}
+	return newParams
+}
+
+func needsToQueryParam(param acsxml.ParameterInfo) bool {
+	if param.Name[len(param.Name)-1:] != "." {
+		return false
+	}
+	chunks := strings.Split(param.Name, ".")
+	return len(chunks) > 2 && len(chunks) <= 3 && param.Done == false && param.Writable == "0"
+}
+
+/*func (pd *ParameterDecisions) getParamsBeginningWith(path string) []acsxml.ParameterInfo {
 	var params []acsxml.ParameterInfo
 	for idx, param := range pd.ReqRes.Session.CPE.ParametersInfo {
 		if param.Done == false && param.Writable == "0" && param.Name[len(param.Name)-1:] == "." {
@@ -66,9 +104,7 @@ func (pd *ParameterDecisions) getNextLevelParams() []acsxml.ParameterInfo {
 			params = append(params, param)
 		}
 	}
-
-	return params
-}
+}*/
 
 func (pd *ParameterDecisions) GetParameterValuesRequest(parameters []acsxml.ParameterInfo) string {
 	var request = pd.ReqRes.Envelope.GPVRequest(parameters)

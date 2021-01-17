@@ -38,6 +38,7 @@ func (cpe *CPE) AddParameterInfo(parameter types.ParameterInfo) {
 	}
 
 	cpe.ParametersInfo = append(cpe.ParametersInfo, parameter)
+
 }
 
 func (cpe *CPE) AddParametersInfo(parameters []types.ParameterInfo) {

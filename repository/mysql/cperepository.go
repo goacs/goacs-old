@@ -98,9 +98,9 @@ func (r *CPERepository) Create(cpe *cpe.CPE) (bool, error) {
 			serial_number=?, 
 			hardware_version=?, 
 			software_version=?, 
-      connection_request_url=?,
-      connection_request_user=?,
-      connection_request_password=?,              
+		    connection_request_url=?,
+		    connection_request_user=?,
+		    connection_request_password=?,              
 			created_at=?, 
 			updated_at=?
 			`,
@@ -150,22 +150,26 @@ func (r *CPERepository) UpdateOrCreate(cpe *cpe.CPE) (result bool, cpeExist bool
 		result, err = r.Create(cpe)
 		cpeExist = false
 	} else {
-		fmt.Println("Updating CPE")
-		stmt, _ := r.db.Prepare(`UPDATE cpe SET 
-               hardware_version=?, 
-               software_version=?, 
-               connection_request_url=?,   
-               updated_at=? 
-			   WHERE uuid=?`)
-
-		_, err := stmt.Exec(
-			cpe.HardwareVersion,
-			cpe.SoftwareVersion,
-			cpe.ConnectionRequestUrl,
-			time.Now(),
-			dbCPE.UUID,
-		)
 		cpe.UUID = dbCPE.UUID
+
+		fmt.Println("Updating CPE")
+		dialect := goqu.Dialect("mysql")
+
+		query, args, _ := dialect.Update("cpe").Prepared(true).
+			Set(goqu.Record{
+				"hardware_version":            cpe.HardwareVersion,
+				"software_version":            cpe.SoftwareVersion,
+				"connection_request_url":      cpe.ConnectionRequestUrl,
+				"connection_request_user":     cpe.ConnectionRequestUser,
+				"connection_request_password": cpe.ConnectionRequestPassword,
+				"updated_at":                  time.Now(),
+			}).
+			Where(goqu.Ex{
+				"uuid": cpe.UUID,
+			}).
+			ToSQL()
+
+		_, err := r.db.Exec(query, args...)
 
 		if err != nil {
 			log.Println("error while updatng cpe " + err.Error())

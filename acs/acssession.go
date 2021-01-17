@@ -25,18 +25,20 @@ const (
 )
 
 type ACSSession struct {
-	Id                string
-	IsNew             bool
-	IsNewInACS        bool
-	IsBoot            bool
-	IsBootstrap       bool
-	Provision         bool
-	ReadAllParameters bool
-	PrevReqType       string
-	CreatedAt         time.Time
-	CPE               cpe.CPE
-	NextJob           int
-	Tasks             []tasks.Task
+	Id                          string
+	IsNew                       bool
+	IsNewInACS                  bool
+	IsBoot                      bool
+	IsBootstrap                 bool
+	Provision                   bool
+	ReadAllParameters           bool
+	PrevReqType                 string
+	CreatedAt                   time.Time
+	CPE                         cpe.CPE
+	NextJob                     int
+	Tasks                       []tasks.Task
+	GPNCount                    int //Count GPN requests to prevent many requests
+	ParameterNamesToQueryValues []types.ParameterInfo
 }
 
 var lock = sync.RWMutex{}
@@ -145,20 +147,56 @@ func (session *ACSSession) FillCPESessionFromInform(inform types.Inform) {
 	session.CPE.SerialNumber = inform.DeviceId.SerialNumber
 	session.IsBoot = inform.IsBootEvent()
 	session.IsBootstrap = inform.IsBootstrapEvent()
+	session.CPE.AddParameterValues(inform.ParameterList)
 	session.FillCPESessionBaseInfo(inform.ParameterList)
 }
 
 func (session *ACSSession) FillCPESessionBaseInfo(parameters []types.ParameterValueStruct) {
-	session.CPE.AddParameterValues(parameters)
-	session.CPE.ConnectionRequestUrl, _ = session.CPE.GetParameterValue(session.CPE.Root + ".ManagementServer.ConnectionRequestURL")
-	session.CPE.ConnectionRequestUser, _ = session.CPE.GetParameterValue(session.CPE.Root + ".ManagementServer.Username")
-	session.CPE.ConnectionRequestPassword, _ = session.CPE.GetParameterValue(session.CPE.Root + ".ManagementServer.Password")
-	session.CPE.HardwareVersion, _ = session.CPE.GetParameterValue(session.CPE.Root + ".DeviceInfo.HardwareVersion")
-	session.CPE.SoftwareVersion, _ = session.CPE.GetParameterValue(session.CPE.Root + ".DeviceInfo.SoftwareVersion")
-	ipAddrStr, _ := session.CPE.GetParameterValue(session.CPE.Root + "..WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.ExternalIPAddress")
-	_ = session.CPE.IpAddress.Scan(ipAddrStr)
+	if session.CPE.ConnectionRequestUrl == "" {
+		session.CPE.ConnectionRequestUrl, _ = session.CPE.GetParameterValue(session.CPE.Root + ".ManagementServer.ConnectionRequestURL")
+	}
+	if session.CPE.ConnectionRequestUser == "" {
+		session.CPE.ConnectionRequestUser, _ = session.CPE.GetParameterValue(session.CPE.Root + ".ManagementServer.Username")
+	}
+	if session.CPE.ConnectionRequestPassword == "" {
+		session.CPE.ConnectionRequestPassword, _ = session.CPE.GetParameterValue(session.CPE.Root + ".ManagementServer.Password")
+	}
+	if session.CPE.HardwareVersion == "" {
+		session.CPE.HardwareVersion, _ = session.CPE.GetParameterValue(session.CPE.Root + ".DeviceInfo.HardwareVersion")
+	}
+	if session.CPE.SoftwareVersion == "" {
+		session.CPE.SoftwareVersion, _ = session.CPE.GetParameterValue(session.CPE.Root + ".DeviceInfo.SoftwareVersion")
+	}
+	if session.CPE.IpAddress.IP.String() != "<nil>" {
+		ipAddrStr, _ := session.CPE.GetParameterValue(session.CPE.Root + "..WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.ExternalIPAddress")
+		_ = session.CPE.IpAddress.Scan(ipAddrStr)
+	}
+}
+
+func (session *ACSSession) AddParameterNamesToQueryValues(param types.ParameterInfo) {
+	for _, existParam := range session.ParameterNamesToQueryValues {
+		if existParam.Name == param.Name {
+			return
+		}
+	}
+
+	session.ParameterNamesToQueryValues = append(session.ParameterNamesToQueryValues, param)
 }
 
 func (session *ACSSession) AddTask(task tasks.Task) {
 	session.Tasks = append(session.Tasks, task)
+}
+
+func (session *ACSSession) TaskExist(task tasks.Task) bool {
+	if task.Id == 0 {
+		return false
+	}
+
+	for _, sessionTask := range session.Tasks {
+		if sessionTask.Id == task.Id {
+			return true
+		}
+	}
+
+	return false
 }

@@ -49,6 +49,10 @@ func (se *ScriptEngine) GetParameterValue(path string) string {
 	return value
 }
 
+func (se *ScriptEngine) ParameterExist(path string) bool {
+	return se.ReqRes.Session.CPE.ParameterValueExist(path)
+}
+
 func (se *ScriptEngine) SaveDevice() {
 	cpeRepository := mysql.NewCPERepository(repository.GetConnection())
 	_ = cpeRepository.BulkInsertOrUpdateParameters(&se.ReqRes.Session.CPE, se.ReqRes.Session.CPE.ParameterValues)
