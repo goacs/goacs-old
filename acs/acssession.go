@@ -158,9 +158,10 @@ func (session *ACSSession) FillCPESessionBaseInfo(parameters []types.ParameterVa
 	if session.CPE.ConnectionRequestUser == "" {
 		session.CPE.ConnectionRequestUser, _ = session.CPE.GetParameterValue(session.CPE.Root + ".ManagementServer.Username")
 	}
-	if session.CPE.ConnectionRequestPassword == "" {
-		session.CPE.ConnectionRequestPassword, _ = session.CPE.GetParameterValue(session.CPE.Root + ".ManagementServer.Password")
-	}
+	// Disable by default, need to be set by ACS
+	//if session.CPE.ConnectionRequestPassword == "" {
+	//	session.CPE.ConnectionRequestPassword, _ = session.CPE.GetParameterValue(session.CPE.Root + ".ManagementServer.Password")
+	//}
 	if session.CPE.HardwareVersion == "" {
 		session.CPE.HardwareVersion, _ = session.CPE.GetParameterValue(session.CPE.Root + ".DeviceInfo.HardwareVersion")
 	}

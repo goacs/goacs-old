@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-const MAX_GPN_REQUESTS = 15
+const MAX_GPN_REQUESTS = 30
 const MAX_CHUNK_SIZE = 1
 
 type ParameterDecisions struct {
