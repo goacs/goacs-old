@@ -165,26 +165,15 @@ func (cpe *CPE) GetParameterValue(parameterName string) (string, error) {
 	return "", errors.New("Unable to find parameter " + parameterName + " in CPE")
 }
 
-func (cpe *CPE) GetAddObjectParameters() []types.ParameterValueStruct {
+func (cpe *CPE) GetObjectParameters() []types.ParameterValueStruct {
 	var filteredParameters []types.ParameterValueStruct
-	for _, parameter := range cpe.ParametersInfo {
-		// If Last character of parameter name is ".", then add it as AddObject to DB
-		if parameter.Name[len(parameter.Name)-1:] == "." && parameter.Writable == "1" {
-			filteredParameters = append(filteredParameters, types.ParameterValueStruct{
-				Name: parameter.Name,
-				ValueStruct: types.ValueStruct{
-					Value: "",
-					Type:  "",
-				},
-				Flag: types.Flag{
-					Read:         true,
-					Write:        true,
-					AddObject:    true,
-					System:       false,
-					PeriodicRead: false,
-					Important:    false,
-				},
-			})
+	for _, parameter := range cpe.ParameterValues {
+		parameterInfo, _ := cpe.GetParameterInfoByName(parameter.Name)
+		parameter.Flag.Write = parameterInfo.Writable == "1"
+
+		if types.IsObjectParameter(parameter) {
+			parameter.Flag.AddObject = true
+			filteredParameters = append(filteredParameters, parameter)
 		}
 	}
 
@@ -201,14 +190,6 @@ func (cpe *CPE) GetFullPathParameterNames() []types.ParameterInfo {
 	}
 
 	return filteredParameters
-}
-func (cpe *CPE) PopParametersQueue() []types.ParameterValueStruct {
-
-	defer func() {
-		cpe.ParametersQueue = []types.ParameterValueStruct{}
-	}()
-
-	return cpe.ParametersQueue
 }
 
 func (cpe *CPE) GetParametersWithFlag(flag string) []types.ParameterValueStruct {
@@ -252,4 +233,34 @@ func DetermineDeviceTreeRootPath(parameters []types.ParameterValueStruct) string
 	}
 
 	return "InternetGatewayDevice"
+}
+
+func CompareObjectParameters(cpeParameters, dbParameters []types.ParameterValueStruct) (addParams, delParams []types.ParameterValueStruct) {
+	log.Println("COMAPRING PARAMS CPE: ", cpeParameters, "DB", dbParameters)
+	for _, dbParam := range dbParameters {
+		add := true
+		for _, cpeParam := range cpeParameters {
+			if dbParam.Name == cpeParam.Name {
+				add = false
+			}
+		}
+		if add && types.IsObjectParameter(dbParam) {
+			addParams = append(addParams, dbParam)
+		}
+	}
+
+	for _, cpeParam := range cpeParameters {
+		del := true
+		for _, dbParam := range dbParameters {
+			if dbParam.Name == cpeParam.Name {
+				del = false
+			}
+		}
+
+		if del && types.IsObjectParameter(cpeParam) {
+			delParams = append(delParams, cpeParam)
+		}
+	}
+
+	return
 }

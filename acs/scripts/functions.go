@@ -27,7 +27,7 @@ func (se *ScriptEngine) SetParameter(path string, value string, flags string) {
 	se.ReqRes.Session.CPE.AddParameter(parameter)
 
 	if flag.System == false {
-		se.ReqRes.Session.CPE.ParametersQueue = append(se.ReqRes.Session.CPE.ParametersQueue, parameter)
+		se.ReqRes.Session.ParametersToAdd = append(se.ReqRes.Session.ParametersToAdd, parameter)
 	}
 }
 

@@ -1,15 +1,17 @@
 package http
 
 import (
-	"fmt"
 	"github.com/jmoiron/sqlx"
 	dac "github.com/xinsnake/go-http-digest-auth-client"
 	"goacs/acs"
-	acsxml "goacs/acs/types"
+	"goacs/acs/types"
 	"goacs/models/cpe"
+	"goacs/models/tasks"
 	"goacs/repository"
 	"log"
 	"net/http"
+	"net/http/cookiejar"
+	"net/url"
 	"time"
 )
 
@@ -19,6 +21,7 @@ type ACSRequest struct {
 	Body         string
 	Response     *http.Response
 	Session      *acs.ACSSession
+	Jar          *cookiejar.Jar
 }
 
 func NewACSRequest(cpe *cpe.CPE) *ACSRequest {
@@ -28,17 +31,34 @@ func NewACSRequest(cpe *cpe.CPE) *ACSRequest {
 		Body:         "",
 	}
 
-	request.Session = acs.CreateEmptySession(cpe.SerialNumber)
+	request.Session = acs.CreateEmptySession(acs.GenerateSessionId())
 
 	return request
 }
 
-func (ACSRequest *ACSRequest) AddObject(param string) {
-	envelope := acsxml.NewEnvelope()
-	reqBody := envelope.AddObjectRequest(param, "")
-	log.Println(reqBody)
+func prepareCookies(session *acs.ACSSession) []*http.Cookie {
+	var cookies []*http.Cookie
 
-	ACSRequest.Body = reqBody
+	cookie := &http.Cookie{
+		Name:  "sessionId",
+		Value: session.Id,
+	}
+
+	cookies = append(cookies, cookie)
+
+	return cookies
+}
+
+func (ACSRequest *ACSRequest) AddObject(param string) {
+	task := tasks.NewCPETask(ACSRequest.CPE.UUID)
+
+	task.Task = types.AddObjReq
+	task.ParameterValues = []types.ParameterValueStruct{
+		{
+			Name: param,
+		},
+	}
+
 	err := ACSRequest.Send()
 
 	if err != nil {
@@ -77,11 +97,15 @@ func (acsRequest *ACSRequest) Kick() {
 func (acsRequest *ACSRequest) Send() error {
 	request := dac.NewRequest(acsRequest.CPE.ConnectionRequestUser, acsRequest.CPE.ConnectionRequestPassword, "GET", acsRequest.CPE.ConnectionRequestUrl, acsRequest.Body)
 
+	parsedUrl, err := url.Parse(acsRequest.CPE.ConnectionRequestUrl)
+	jar, _ := cookiejar.New(nil)
+	jar.SetCookies(parsedUrl, prepareCookies(acsRequest.Session))
+
 	client := http.Client{
 		Timeout: time.Second * 5,
+		Jar:     jar,
 	}
 
-	request.Header.Add("Set-Cookie", fmt.Sprintf("%s=%s; ", "sessionId", acsRequest.Session.Id))
 	request.HTTPClient = &client
 
 	response, err := request.Execute()

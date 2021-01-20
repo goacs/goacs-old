@@ -354,6 +354,21 @@ func (r *CPERepository) GetCPEParameters(cpe *cpe.CPE) ([]types.ParameterValueSt
 	return parameters, nil
 }
 
+func (r *CPERepository) GetCPEParametersWithFlag(cpe *cpe.CPE, flag string) []types.ParameterValueStruct {
+	var parameters = []types.ParameterValueStruct{}
+
+	rows, err := r.db.Queryx("SELECT * FROM cpe_parameters WHERE cpe_uuid=? AND INSTR(flags, ?) > 0", cpe.UUID, flag)
+
+	if err != nil {
+		log.Println(err.Error())
+		log.Println("CPE UUID ", cpe.UUID)
+		return parameters
+	}
+
+	parameters = parametersRowsParser(rows)
+	return parameters
+}
+
 func (r *CPERepository) ListCPEParameters(cpe *cpe.CPE, request repository.PaginatorRequest) ([]types.ParameterValueStruct, int) {
 	dialect := goqu.Dialect("mysql")
 

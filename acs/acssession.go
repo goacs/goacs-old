@@ -39,6 +39,8 @@ type ACSSession struct {
 	Tasks                       []tasks.Task
 	GPNCount                    int //Count GPN requests to prevent many requests
 	ParameterNamesToQueryValues []types.ParameterInfo
+	ParametersToAdd             []types.ParameterValueStruct
+	ParametersToDelete          []types.ParameterValueStruct
 }
 
 var lock = sync.RWMutex{}
@@ -145,32 +147,43 @@ func removeOldSessions() {
 func (session *ACSSession) FillCPESessionFromInform(inform types.Inform) {
 	session.CPE.SetRoot(cpe.DetermineDeviceTreeRootPath(inform.ParameterList))
 	session.CPE.SerialNumber = inform.DeviceId.SerialNumber
-	session.IsBoot = inform.IsBootEvent()
+	session.IsBoot = inform.IsBootEvent() || inform.IsBootstrapEvent()
 	session.IsBootstrap = inform.IsBootstrapEvent()
 	session.CPE.AddParameterValues(inform.ParameterList)
 	session.FillCPESessionBaseInfo(inform.ParameterList)
 }
 
 func (session *ACSSession) FillCPESessionBaseInfo(parameters []types.ParameterValueStruct) {
-	if session.CPE.ConnectionRequestUrl == "" {
-		session.CPE.ConnectionRequestUrl, _ = session.CPE.GetParameterValue(session.CPE.Root + ".ManagementServer.ConnectionRequestURL")
+	var value string
+	value, _ = session.CPE.GetParameterValue(session.CPE.Root + ".ManagementServer.ConnectionRequestURL")
+
+	if value != "" {
+		session.CPE.ConnectionRequestUrl = value
 	}
-	if session.CPE.ConnectionRequestUser == "" {
-		session.CPE.ConnectionRequestUser, _ = session.CPE.GetParameterValue(session.CPE.Root + ".ManagementServer.Username")
+
+	value, _ = session.CPE.GetParameterValue(session.CPE.Root + ".ManagementServer.Username")
+	if value != "" {
+		session.CPE.ConnectionRequestUser = value
 	}
-	// Disable by default, need to be set by ACS
-	//if session.CPE.ConnectionRequestPassword == "" {
-	//	session.CPE.ConnectionRequestPassword, _ = session.CPE.GetParameterValue(session.CPE.Root + ".ManagementServer.Password")
-	//}
-	if session.CPE.HardwareVersion == "" {
-		session.CPE.HardwareVersion, _ = session.CPE.GetParameterValue(session.CPE.Root + ".DeviceInfo.HardwareVersion")
+
+	value, _ = session.CPE.GetParameterValue(session.CPE.Root + ".ManagementServer.Password")
+	if value != "" {
+		session.CPE.ConnectionRequestPassword = value
 	}
-	if session.CPE.SoftwareVersion == "" {
-		session.CPE.SoftwareVersion, _ = session.CPE.GetParameterValue(session.CPE.Root + ".DeviceInfo.SoftwareVersion")
+
+	value, _ = session.CPE.GetParameterValue(session.CPE.Root + ".DeviceInfo.HardwareVersion")
+	if value != "" {
+		session.CPE.HardwareVersion = value
 	}
-	if session.CPE.IpAddress.IP.String() != "<nil>" {
-		ipAddrStr, _ := session.CPE.GetParameterValue(session.CPE.Root + "..WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.ExternalIPAddress")
-		_ = session.CPE.IpAddress.Scan(ipAddrStr)
+
+	value, _ = session.CPE.GetParameterValue(session.CPE.Root + ".DeviceInfo.SoftwareVersion")
+	if value != "" {
+		session.CPE.SoftwareVersion = value
+	}
+
+	value, _ = session.CPE.GetParameterValue(session.CPE.Root + "..WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.ExternalIPAddress")
+	if value != "" {
+		_ = session.CPE.IpAddress.Scan(value)
 	}
 }
 
@@ -184,6 +197,35 @@ func (session *ACSSession) AddParameterNamesToQueryValues(param types.ParameterI
 	session.ParameterNamesToQueryValues = append(session.ParameterNamesToQueryValues, param)
 }
 
+func (session *ACSSession) AddParameterToAdd(param types.ParameterValueStruct) {
+	for _, existParam := range session.ParametersToAdd {
+		if existParam.Name == param.Name {
+			return
+		}
+	}
+
+	session.ParametersToAdd = append(session.ParametersToAdd, param)
+}
+
+func (session *ACSSession) AddParameterToDelete(param types.ParameterValueStruct) {
+	for _, existParam := range session.ParametersToDelete {
+		if existParam.Name == param.Name {
+			return
+		}
+	}
+
+	session.ParametersToDelete = append(session.ParametersToDelete, param)
+}
+
+func (session *ACSSession) PopParametersToAdd() []types.ParameterValueStruct {
+
+	defer func() {
+		session.ParametersToAdd = []types.ParameterValueStruct{}
+	}()
+
+	return session.ParametersToAdd
+}
+
 func (session *ACSSession) AddTask(task tasks.Task) {
 	session.Tasks = append(session.Tasks, task)
 }
@@ -195,6 +237,16 @@ func (session *ACSSession) TaskExist(task tasks.Task) bool {
 
 	for _, sessionTask := range session.Tasks {
 		if sessionTask.Id == task.Id {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (session *ACSSession) HasTaskOfType(taskType string) bool {
+	for _, sessionTask := range session.Tasks {
+		if sessionTask.Task == taskType {
 			return true
 		}
 	}

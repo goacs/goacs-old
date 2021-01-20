@@ -15,5 +15,7 @@ const (
 	FaultResp  string = "FaultResp"
 	AddObjReq  string = "AddObjectRequest"
 	AddObjResp string = "AddObjectResponse"
+	DelObjReq  string = "DeleteObjectRequest"
+	DelObjResp string = "DeleteObjectResponse"
 	UNKNOWN    string = "unknown"
 )

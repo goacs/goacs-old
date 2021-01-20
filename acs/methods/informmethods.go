@@ -24,9 +24,6 @@ func (InformDecision *InformDecision) CpeInformRequestParser() {
 	var inform acsxml.Inform
 	_ = xml.Unmarshal(InformDecision.ReqRes.Body, &inform)
 	log.Println("SESSION FROM InformReq", InformDecision.ReqRes.Session.IsNew, InformDecision.ReqRes.Session.ReadAllParameters)
-	if env.Get("DEBUG", "false") == "true" {
-		InformDecision.ReqRes.Session.IsBoot = true
-	}
 
 	InformDecision.ReqRes.Session.FillCPESessionFromInform(inform)
 	cpeRepository := mysql.NewCPERepository(InformDecision.ReqRes.DBConnection)
@@ -34,13 +31,18 @@ func (InformDecision *InformDecision) CpeInformRequestParser() {
 	InformDecision.ReqRes.Session.ReadAllParameters = !cpeExist
 	InformDecision.ReqRes.Session.IsNewInACS = !cpeExist
 	InformDecision.ReqRes.Session.Provision = !cpeExist
+	InformDecision.ReqRes.Session.IsNew = false
+
+	if env.Get("DEBUG", "false") == "true" {
+		InformDecision.ReqRes.Session.IsBoot = true
+	}
 
 	_, _ = cpeRepository.SaveParameters(&InformDecision.ReqRes.Session.CPE)
 	task := tasks.NewCPETask(InformDecision.ReqRes.Session.CPE.UUID)
 	task.Task = acsxml.InformResp
 	InformDecision.ReqRes.Session.AddTask(task)
 
-	if InformDecision.ReqRes.Session.IsNewInACS {
+	if InformDecision.ReqRes.Session.IsNewInACS || InformDecision.ReqRes.Session.IsBoot {
 		task = tasks.NewCPETask(InformDecision.ReqRes.Session.CPE.UUID)
 		task.Task = acsxml.GPNReq
 		task.ParameterInfo = append(task.ParameterInfo, acsxml.ParameterInfo{
@@ -49,4 +51,5 @@ func (InformDecision *InformDecision) CpeInformRequestParser() {
 		})
 		InformDecision.ReqRes.Session.AddTask(task)
 	}
+
 }

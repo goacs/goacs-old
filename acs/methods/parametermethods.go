@@ -33,11 +33,10 @@ func (pd *ParameterDecisions) CpeParameterNamesResponseParser() {
 	_ = xml.Unmarshal(pd.ReqRes.Body, &gpnr)
 	pd.ReqRes.Session.CPE.AddParametersInfo(gpnr.ParameterList)
 
-	cpeRepository := mysql.NewCPERepository(repository.GetConnection())
-	_ = cpeRepository.BulkInsertOrUpdateParameters(&pd.ReqRes.Session.CPE, pd.ReqRes.Session.CPE.GetAddObjectParameters())
+	//cpeRepository := mysql.NewCPERepository(repository.GetConnection())
+	//_ = cpeRepository.BulkInsertOrUpdateParameters(&pd.ReqRes.Session.CPE, pd.ReqRes.Session.CPE.GetObjectParameters())
 
 	nextLevelParams := pd.GetNextLevelParams(pd.ReqRes.Session.CPE.ParametersInfo)
-	log.Println(nextLevelParams)
 
 	if pd.ReqRes.Session.GPNCount < MAX_GPN_REQUESTS && len(nextLevelParams) > 0 {
 		for _, nextLevelParam := range nextLevelParams {
@@ -64,7 +63,7 @@ func (pd *ParameterDecisions) CpeParameterNamesResponseParser() {
 		return //if we have nextLevelParams, then prevent GPVReq add task
 	}
 	log.Println("Current GPN tasks", pd.ReqRes.Session.Tasks)
-	if pd.ReqRes.Session.IsNewInACS && len(pd.ReqRes.Session.Tasks) == 0 {
+	if (pd.ReqRes.Session.IsNewInACS || pd.ReqRes.Session.IsBoot) && len(pd.ReqRes.Session.Tasks) == 0 {
 		log.Println("ADDING GPVREQ for these params", pd.ReqRes.Session.ParameterNamesToQueryValues)
 		for _, parameterNames := range acsxml.ChunkParameterInfo(pd.ReqRes.Session.ParameterNamesToQueryValues, MAX_CHUNK_SIZE) {
 			log.Println("adding gpvreq for new device")
@@ -124,6 +123,43 @@ func (pd *ParameterDecisions) GetParameterValuesResponseParser() {
 	//log.Println(pd.CPERequest.Session.CPE.ParameterValues)
 	if pd.ReqRes.Session.IsNewInACS {
 		_ = cpeRepository.BulkInsertOrUpdateParameters(&pd.ReqRes.Session.CPE, pd.ReqRes.Session.CPE.ParameterValues)
+	} else if pd.ReqRes.Session.IsBoot {
+		if pd.ReqRes.Session.HasTaskOfType(acsxml.GPVReq) == false {
+			cpeObjectParameters := pd.ReqRes.Session.CPE.GetObjectParameters()
+			dbObjectParameters := cpeRepository.GetCPEParametersWithFlag(&pd.ReqRes.Session.CPE, "A")
+
+			addparams, delparams := cpe.CompareObjectParameters(cpeObjectParameters, dbObjectParameters)
+
+			if len(delparams) > 0 {
+				for _, param := range delparams {
+					task := tasks.NewCPETask(pd.ReqRes.Session.CPE.UUID)
+					task.Task = acsxml.DelObjReq
+					task.ParameterValues = []acsxml.ParameterValueStruct{param}
+					log.Println("ADDING DELOBJECT TASK", task)
+					//pd.ReqRes.Session.AddTask(task)
+				}
+
+			}
+
+			if len(addparams) > 0 {
+				for _, param := range addparams {
+					newName, err := acsxml.ObjectParamToInstance(param.Name)
+
+					if err != nil {
+						log.Println("addparams error", err)
+						continue
+					}
+					param.Name = newName
+					task := tasks.NewCPETask(pd.ReqRes.Session.CPE.UUID)
+					task.Task = acsxml.AddObjReq
+					task.ParameterValues = []acsxml.ParameterValueStruct{param}
+					log.Println("ADDING ADDOBJECT TASK", task)
+					//pd.ReqRes.Session.AddTask(task)
+				}
+
+			}
+
+		}
 	}
 
 }
@@ -147,12 +183,12 @@ func (pd *ParameterDecisions) PrepareParametersToSend() {
 		diffParameters := pd.ReqRes.Session.CPE.GetChangedParametersToWrite(&cpeDBParameters)
 		log.Println("DIFF PARAMS", diffParameters)
 		if len(diffParameters) > 0 {
-			pd.ReqRes.Session.CPE.ParametersQueue = append(pd.ReqRes.Session.CPE.ParametersQueue, diffParameters...)
+			pd.ReqRes.Session.ParametersToAdd = append(pd.ReqRes.Session.ParametersToAdd, diffParameters...)
 		}
 	}
 
 	//TODO: Check why some parameters are writeable, but cpe returns fault on it
-	if len(pd.ReqRes.Session.CPE.ParametersQueue) > 0 {
+	if len(pd.ReqRes.Session.ParametersToAdd) > 0 {
 		log.Println("ADD SPVREQ TASK")
 		task := tasks.NewCPETask(pd.ReqRes.Session.CPE.UUID)
 		task.Task = acsxml.SPVReq

@@ -43,6 +43,11 @@ func CPERequestDecision(request *http.Request, w http.ResponseWriter) {
 		ReqType:      reqType,
 	}
 
+	if session.IsNew && reqType != acsxml.InformReq {
+		log.Println("INVALID SESSION")
+		reqRes.SendResponse("")
+	}
+
 	if reqRes.Session != nil {
 		acs.AddCookieToResponseWriter(reqRes.Session, reqRes.Response)
 	}
@@ -152,8 +157,23 @@ func ProcessTask(task tasks.Task, reqRes *acshttp.CPERequest) bool {
 		body := parameterMethods.GetParameterValuesRequest(task.ParameterInfo)
 		reqRes.SendResponse(body)
 	} else if task.Task == acsxml.SPVReq {
-		body := reqRes.Envelope.SetParameterValues(reqRes.Session.CPE.PopParametersQueue())
+		body := reqRes.Envelope.SetParameterValues(reqRes.Session.PopParametersToAdd())
 		reqRes.SendResponse(body)
+	} else if task.Task == acsxml.AddObjReq {
+		reqRes.Session.PrevReqType = acsxml.AddObjReq
+		body := reqRes.Envelope.AddObjectRequest(task.ParameterValues[0].Name, "")
+		reqRes.SendResponse(body)
+		gpnTask := tasks.NewCPETask(reqRes.Session.CPE.UUID)
+		gpnTask.ParameterInfo = task.ParameterInfo
+		reqRes.Session.AddTask(gpnTask)
+	} else if task.Task == acsxml.DelObjReq {
+		reqRes.Session.PrevReqType = acsxml.DelObjReq
+		body := reqRes.Envelope.DeleteObjectRequest(task.ParameterValues[0].Name, "")
+		reqRes.SendResponse(body)
+		reqRes.Session.AddParameterToDelete(task.ParameterInfo[0].ToParameterValueStruct())
+		gpnTask := tasks.NewCPETask(reqRes.Session.CPE.UUID)
+		gpnTask.ParameterInfo = task.ParameterInfo
+		reqRes.Session.AddTask(gpnTask)
 	}
 
 	if task.Id != 0 && task.Infinite == false {

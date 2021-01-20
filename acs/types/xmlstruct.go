@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/xml"
+	"errors"
 	"log"
 	"math/rand"
 	"os"
@@ -341,6 +342,52 @@ func (envelope *Envelope) DownloadRequest() string {
 		</cwmp:Download>
     </soapenv:Body>
 </soapenv:Envelope>`
+}
+
+func (param *ParameterInfo) ToParameterValueStruct() ParameterValueStruct {
+	return ParameterValueStruct{
+		Name:        param.Name,
+		ValueStruct: ValueStruct{},
+		Flag:        Flag{},
+		Done:        false,
+	}
+}
+
+func GetParamsStartsWith(start string, parameters []ParameterValueStruct) (retParameters []ParameterValueStruct) {
+	for _, parameter := range parameters {
+		if strings.HasPrefix(parameter.Name, start) {
+			retParameters = append(retParameters, parameter)
+		}
+	}
+
+	return
+}
+
+func IsObjectParameter(parameter ParameterValueStruct) bool {
+	if parameter.Name[len(parameter.Name)-1:] == "." && parameter.Flag.Write == true {
+		//name := []rune(parameter.Name)
+		//previous := name[len(parameter.Name)-2:len(parameter.Name)-1]
+		//if !unicode.IsDigit(previous[0]) {
+		//	return true
+		//}
+		return true
+	}
+	return false
+}
+
+func ObjectParamToInstance(path string) (string, error) {
+	if strings.HasSuffix(path, ".") == false {
+		return "", errors.New("Invalid path")
+	}
+
+	chunks := strings.Split(path, ".")
+	newPath := ""
+
+	for i := 0; i < len(chunks)-2; i++ {
+		newPath = newPath + chunks[i] + "."
+	}
+
+	return newPath, nil
 }
 
 func PrintParamsInfo(params []ParameterInfo, serial string) {
