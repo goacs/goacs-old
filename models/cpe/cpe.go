@@ -31,8 +31,8 @@ type CPE struct {
 func (cpe *CPE) AddParameterInfo(parameter types.ParameterInfo) {
 	for index := range cpe.ParametersInfo {
 		if cpe.ParametersInfo[index].Name == parameter.Name {
-			cpe.ParametersInfo[index].Done = parameter.Done
-			cpe.ParametersInfo[index].Writable = parameter.Writable
+			//cpe.ParametersInfo[index].Done = parameter.Done
+			//cpe.ParametersInfo[index].Writable = parameter.Writable
 			return
 		}
 	}

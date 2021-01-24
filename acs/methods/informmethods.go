@@ -49,6 +49,7 @@ func (InformDecision *InformDecision) CpeInformRequestParser() {
 			Name: InformDecision.ReqRes.Session.CPE.Root + ".",
 			Done: false,
 		})
+		task.NextLevel = true
 		InformDecision.ReqRes.Session.AddTask(task)
 	}
 

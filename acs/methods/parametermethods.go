@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-const MAX_GPN_REQUESTS = 30
+const MAX_GPN_REQUESTS = 50
 const MAX_CHUNK_SIZE = 1
 
 type ParameterDecisions struct {
@@ -32,6 +32,7 @@ func (pd *ParameterDecisions) CpeParameterNamesResponseParser() {
 
 	_ = xml.Unmarshal(pd.ReqRes.Body, &gpnr)
 	pd.ReqRes.Session.CPE.AddParametersInfo(gpnr.ParameterList)
+	pd.ReqRes.Session.GPNCount--
 
 	//cpeRepository := mysql.NewCPERepository(repository.GetConnection())
 	//_ = cpeRepository.BulkInsertOrUpdateParameters(&pd.ReqRes.Session.CPE, pd.ReqRes.Session.CPE.GetObjectParameters())
@@ -71,6 +72,7 @@ func (pd *ParameterDecisions) CpeParameterNamesResponseParser() {
 			task.Task = acsxml.GPVReq
 			task.ParameterInfo = parameterNames
 			pd.ReqRes.Session.AddTask(task)
+			pd.ReqRes.Session.GPVCount++
 		}
 	}
 
@@ -80,6 +82,8 @@ func (pd *ParameterDecisions) GetNextLevelParams(params []acsxml.ParameterInfo) 
 	var newParams []acsxml.ParameterInfo
 	for idx, param := range params {
 		if needsToQueryParam(param) {
+			log.Println("GetNExtLevelParamName", pd.ReqRes.Session.CPE.ParametersInfo[idx].Name)
+			log.Println("DONE", pd.ReqRes.Session.CPE.ParametersInfo[idx].Done)
 			pd.ReqRes.Session.CPE.ParametersInfo[idx].Done = true
 			newParams = append(newParams, param)
 		}
@@ -92,7 +96,7 @@ func needsToQueryParam(param acsxml.ParameterInfo) bool {
 		return false
 	}
 	chunks := strings.Split(param.Name, ".")
-	return len(chunks) > 2 && len(chunks) <= 3 && param.Done == false && param.Writable == "0"
+	return len(chunks) > 2 && len(chunks) <= 3 && param.Done == false
 }
 
 /*func (pd *ParameterDecisions) getParamsBeginningWith(path string) []acsxml.ParameterInfo {
@@ -119,6 +123,8 @@ func (pd *ParameterDecisions) GetParameterValuesResponseParser() {
 	pd.ReqRes.Session.FillCPESessionBaseInfo(gpvr.ParameterList)
 	cpeRepository := mysql.NewCPERepository(repository.GetConnection())
 	_, _, _ = cpeRepository.UpdateOrCreate(&pd.ReqRes.Session.CPE)
+
+	pd.ReqRes.Session.GPVCount--
 
 	//log.Println(pd.CPERequest.Session.CPE.ParameterValues)
 	if pd.ReqRes.Session.IsNewInACS {
@@ -193,6 +199,7 @@ func (pd *ParameterDecisions) PrepareParametersToSend() {
 		task := tasks.NewCPETask(pd.ReqRes.Session.CPE.UUID)
 		task.Task = acsxml.SPVReq
 		pd.ReqRes.Session.AddTask(task)
+		pd.ReqRes.Session.SPVCount++
 	}
 }
 

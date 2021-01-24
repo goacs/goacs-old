@@ -17,6 +17,8 @@ import (
 	"net/http"
 )
 
+const RunScript_MAX_COUNT = 30
+
 func CPERequestDecision(request *http.Request, w http.ResponseWriter) {
 	buffer, err := ioutil.ReadAll(request.Body)
 	//session := acs.CreateSession(request)
@@ -91,10 +93,10 @@ func CPERequestDecision(request *http.Request, w http.ResponseWriter) {
 		fmt.Println("UNSUPPORTED REQTYPE ", reqType)
 	}
 
-	if session.Provision == true {
-		parameterDecisions := methods.ParameterDecisions{ReqRes: &reqRes}
-		parameterDecisions.PrepareParametersToSend()
-	}
+	//if session.Provision == true {
+	//	parameterDecisions := methods.ParameterDecisions{ReqRes: &reqRes}
+	//	parameterDecisions.PrepareParametersToSend()
+	//}
 
 	ProcessTasks(&reqRes, reqType)
 
@@ -135,14 +137,16 @@ func ProcessTasks(reqRes *acshttp.CPERequest, event string) {
 
 func ProcessTask(task tasks.Task, reqRes *acshttp.CPERequest) bool {
 	log.Println("Processing task: ", task.Task)
-	if task.Task == tasks.RunScript {
+	if task.Task == tasks.RunScript && reqRes.Session.RunnedScripts < RunScript_MAX_COUNT {
+		reqRes.Session.RunnedScripts++
 		scriptEngine := scripts.NewScriptEngine(reqRes)
 		_, err := scriptEngine.Execute(task.Script)
 		log.Println(err)
 		parameterDecisions := methods.ParameterDecisions{ReqRes: reqRes}
 		parameterDecisions.PrepareParametersToSend()
 		//log.Println("TASK QUEUE", reqRes.Session.Tasks)
-
+		log.Println("RunnedScripts", reqRes.Session.RunnedScripts)
+		log.Println("RunScriptCount", reqRes.Session.RunScriptCount)
 		return false
 	} else if task.Task == acsxml.InformResp {
 		informMethods := methods.InformDecision{ReqRes: reqRes}
@@ -150,13 +154,17 @@ func ProcessTask(task tasks.Task, reqRes *acshttp.CPERequest) bool {
 		reqRes.SendResponse(body)
 	} else if task.Task == acsxml.GPNReq {
 		parameterMethods := methods.ParameterDecisions{ReqRes: reqRes}
-		body := parameterMethods.ParameterNamesRequest(task.ParameterInfo[0].Name, false)
+		body := parameterMethods.ParameterNamesRequest(task.ParameterInfo[0].Name, task.NextLevel)
 		reqRes.SendResponse(body)
 	} else if task.Task == acsxml.GPVReq {
 		parameterMethods := methods.ParameterDecisions{ReqRes: reqRes}
 		body := parameterMethods.GetParameterValuesRequest(task.ParameterInfo)
 		reqRes.SendResponse(body)
 	} else if task.Task == acsxml.SPVReq {
+		log.Println("Current Session counts")
+		log.Println("GPN", reqRes.Session.GPNCount)
+		log.Println("GPV", reqRes.Session.GPVCount)
+		log.Println("SPV", reqRes.Session.SPVCount)
 		body := reqRes.Envelope.SetParameterValues(reqRes.Session.PopParametersToAdd())
 		reqRes.SendResponse(body)
 	} else if task.Task == acsxml.AddObjReq {

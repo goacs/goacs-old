@@ -38,6 +38,10 @@ type ACSSession struct {
 	NextJob                     int
 	Tasks                       []tasks.Task
 	GPNCount                    int //Count GPN requests to prevent many requests
+	GPVCount                    int //Count GPV requests
+	SPVCount                    int //Count GPV requests
+	RunScriptCount              int
+	RunnedScripts               int
 	ParameterNamesToQueryValues []types.ParameterInfo
 	ParametersToAdd             []types.ParameterValueStruct
 	ParametersToDelete          []types.ParameterValueStruct
@@ -227,6 +231,10 @@ func (session *ACSSession) PopParametersToAdd() []types.ParameterValueStruct {
 }
 
 func (session *ACSSession) AddTask(task tasks.Task) {
+	if task.Task == tasks.RunScript {
+		session.RunScriptCount++
+	}
+
 	session.Tasks = append(session.Tasks, task)
 }
 

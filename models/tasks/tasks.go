@@ -37,6 +37,7 @@ type Task struct {
 	DoneAt          null.Time                    `json:"done_at" db:"done_at"`
 	ParameterValues []types.ParameterValueStruct `json:"-"`
 	ParameterInfo   []types.ParameterInfo
+	NextLevel       bool
 }
 
 func NewCPETask(cpe_uuid string) Task {

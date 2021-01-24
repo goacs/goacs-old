@@ -268,7 +268,7 @@ func (envelope *Envelope) GetRPCMethodsRequest() string {
 </soapenv:Envelope>`
 }
 
-func (envelope *Envelope) SetParameterValues(info []ParameterValueStruct) string {
+func (envelope *Envelope) SetParameterValues(parameters []ParameterValueStruct) string {
 	if envelope.Header.ID == "" {
 		envelope.Header.ID = strconv.Itoa(rand.Int())
 	}
@@ -279,9 +279,9 @@ func (envelope *Envelope) SetParameterValues(info []ParameterValueStruct) string
   </soapenv:Header>
   <soapenv:Body>
       <cwmp:SetParameterValues>
-			<ParameterList soap:arrayType="cwmp:ParameterValueStruct[` + strconv.Itoa(len(info)) + `]">
+			<ParameterList soap:arrayType="cwmp:ParameterValueStruct[` + strconv.Itoa(len(parameters)) + `]">
 `
-	for _, parameter := range info {
+	for _, parameter := range parameters {
 		request += "<ParameterValueStruct>"
 		request += `<Name>` + parameter.Name + `</Name>`
 		request += `<Value xsi:type="` + parameter.ValueStruct.Type + `">` + parameter.ValueStruct.Value + `</Value>`
@@ -289,11 +289,11 @@ func (envelope *Envelope) SetParameterValues(info []ParameterValueStruct) string
 	}
 
 	request += `</ParameterList>
+	  <ParameterKey></ParameterKey>
 	</cwmp:SetParameterValues>
   </soapenv:Body>
 </soapenv:Envelope>`
 
-	log.Println(request)
 	return request
 }
 
