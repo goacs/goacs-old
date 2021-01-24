@@ -32,7 +32,7 @@ func (cpe *CPE) AddParameterInfo(parameter types.ParameterInfo) {
 	for index := range cpe.ParametersInfo {
 		if cpe.ParametersInfo[index].Name == parameter.Name {
 			//cpe.ParametersInfo[index].Done = parameter.Done
-			//cpe.ParametersInfo[index].Writable = parameter.Writable
+			cpe.ParametersInfo[index].Writable = parameter.Writable
 			return
 		}
 	}
@@ -74,6 +74,10 @@ func (cpe *CPE) AddParameter(parameter types.ParameterValueStruct) {
 		if parameterInfo.Writable == "1" {
 			parameter.Flag.Write = true
 		}
+	}
+
+	if types.IsObjectParameter(parameter) {
+		parameter.Flag.AddObject = true
 	}
 
 	for index := range cpe.ParameterValues {

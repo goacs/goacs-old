@@ -343,5 +343,6 @@ func Kick(ctx *gin.Context) {
 	}
 
 	acsRequest := acshttp.NewACSRequest(cpeModel)
+	//acsRequest.Session.AddTask()
 	acsRequest.Kick()
 }
