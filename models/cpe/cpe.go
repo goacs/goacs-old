@@ -29,6 +29,9 @@ type CPE struct {
 }
 
 func (cpe *CPE) AddParameterInfo(parameter types.ParameterInfo) {
+	if parameter.Name[len(parameter.Name)-1:] == "." {
+		log.Println(parameter.Name)
+	}
 	for index := range cpe.ParametersInfo {
 		if cpe.ParametersInfo[index].Name == parameter.Name {
 			//cpe.ParametersInfo[index].Done = parameter.Done
@@ -76,7 +79,7 @@ func (cpe *CPE) AddParameter(parameter types.ParameterValueStruct) {
 		}
 	}
 
-	if types.IsObjectParameter(parameter) {
+	if types.IsObjectParameter(parameter.Name, parameter.Flag.Write) {
 		parameter.Flag.AddObject = true
 	}
 
@@ -169,13 +172,29 @@ func (cpe *CPE) GetParameterValue(parameterName string) (string, error) {
 	return "", errors.New("Unable to find parameter " + parameterName + " in CPE")
 }
 
+func (cpe *CPE) GetObjectNamesToParameters() []types.ParameterValueStruct {
+	var filteredParameters []types.ParameterValueStruct
+	for _, parameter := range cpe.ParametersInfo {
+		if types.IsObjectParameter(parameter.Name, parameter.Writable == "1") {
+			paramValue := types.ParameterValueStruct{
+				Name:        parameter.Name,
+				ValueStruct: types.ValueStruct{},
+				Flag:        types.Flag{Read: true, Write: true, AddObject: true},
+			}
+			filteredParameters = append(filteredParameters, paramValue)
+		}
+	}
+
+	return filteredParameters
+}
+
 func (cpe *CPE) GetObjectParameters() []types.ParameterValueStruct {
 	var filteredParameters []types.ParameterValueStruct
 	for _, parameter := range cpe.ParameterValues {
 		parameterInfo, _ := cpe.GetParameterInfoByName(parameter.Name)
 		parameter.Flag.Write = parameterInfo.Writable == "1"
 
-		if types.IsObjectParameter(parameter) {
+		if types.IsObjectParameter(parameter.Name, parameter.Flag.Write) {
 			parameter.Flag.AddObject = true
 			filteredParameters = append(filteredParameters, parameter)
 		}
@@ -248,7 +267,7 @@ func CompareObjectParameters(cpeParameters, dbParameters []types.ParameterValueS
 				add = false
 			}
 		}
-		if add && types.IsObjectParameter(dbParam) {
+		if add && types.IsObjectParameter(dbParam.Name, dbParam.Flag.Write) {
 			addParams = append(addParams, dbParam)
 		}
 	}
@@ -261,7 +280,7 @@ func CompareObjectParameters(cpeParameters, dbParameters []types.ParameterValueS
 			}
 		}
 
-		if del && types.IsObjectParameter(cpeParam) {
+		if del && types.IsObjectParameter(cpeParam.Name, cpeParam.Flag.Write) {
 			delParams = append(delParams, cpeParam)
 		}
 	}

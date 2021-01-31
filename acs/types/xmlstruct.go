@@ -363,13 +363,8 @@ func GetParamsStartsWith(start string, parameters []ParameterValueStruct) (retPa
 	return
 }
 
-func IsObjectParameter(parameter ParameterValueStruct) bool {
-	if parameter.Name[len(parameter.Name)-1:] == "." && parameter.Flag.Write == true {
-		//name := []rune(parameter.Name)
-		//previous := name[len(parameter.Name)-2:len(parameter.Name)-1]
-		//if !unicode.IsDigit(previous[0]) {
-		//	return true
-		//}
+func IsObjectParameter(path string, writable bool) bool {
+	if path[len(path)-1:] == "." && writable == true {
 		return true
 	}
 	return false

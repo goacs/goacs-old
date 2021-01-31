@@ -48,7 +48,7 @@ func TestIsObjectParameter(t *testing.T) {
 	}
 
 	for idx, param := range params {
-		if IsObjectParameter(param) != results[idx] {
+		if IsObjectParameter(param.Name, param.Flag.Write) != results[idx] {
 			t.Error("Param", param.Name, "fails IsObjectParameter")
 		}
 	}

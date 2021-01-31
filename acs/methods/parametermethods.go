@@ -34,8 +34,8 @@ func (pd *ParameterDecisions) CpeParameterNamesResponseParser() {
 	pd.ReqRes.Session.CPE.AddParametersInfo(gpnr.ParameterList)
 	pd.ReqRes.Session.GPNCount--
 
-	//cpeRepository := mysql.NewCPERepository(repository.GetConnection())
-	//_ = cpeRepository.BulkInsertOrUpdateParameters(&pd.ReqRes.Session.CPE, pd.ReqRes.Session.CPE.GetObjectParameters())
+	cpeRepository := mysql.NewCPERepository(repository.GetConnection())
+	_ = cpeRepository.BulkInsertOrUpdateParameters(&pd.ReqRes.Session.CPE, pd.ReqRes.Session.CPE.GetObjectNamesToParameters())
 
 	nextLevelParams := pd.GetNextLevelParams(pd.ReqRes.Session.CPE.ParametersInfo)
 
