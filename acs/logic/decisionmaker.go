@@ -166,6 +166,7 @@ func ProcessTask(task tasks.Task, reqRes *acshttp.CPERequest) bool {
 		log.Println("GPV", reqRes.Session.GPVCount)
 		log.Println("SPV", reqRes.Session.SPVCount)
 		body := reqRes.Envelope.SetParameterValues(reqRes.Session.PopParametersToAdd())
+		log.Println(body)
 		reqRes.SendResponse(body)
 	} else if task.Task == acsxml.AddObjReq {
 		reqRes.Session.PrevReqType = acsxml.AddObjReq

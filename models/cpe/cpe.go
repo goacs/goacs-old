@@ -259,7 +259,6 @@ func DetermineDeviceTreeRootPath(parameters []types.ParameterValueStruct) string
 }
 
 func CompareObjectParameters(cpeParameters, dbParameters []types.ParameterValueStruct) (addParams, delParams []types.ParameterValueStruct) {
-	log.Println("COMAPRING PARAMS CPE: ", cpeParameters, "DB", dbParameters)
 	for _, dbParam := range dbParameters {
 		add := true
 		for _, cpeParam := range cpeParameters {

@@ -29,7 +29,7 @@ func UserCreate(ctx *gin.Context) {
 	}
 
 	userRepository := mysql.NewUserRepository(repository.GetConnection())
-	user, err := userRepository.CreateUser(&userModel)
-	log.Print(userModel, user)
-	json.NewEncoder(ctx.Writer).Encode(user)
+	userInstance, err := userRepository.CreateUser(&userModel)
+	log.Print(userModel, userInstance)
+	json.NewEncoder(ctx.Writer).Encode(userInstance)
 }

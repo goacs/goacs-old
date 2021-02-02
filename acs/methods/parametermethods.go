@@ -131,7 +131,7 @@ func (pd *ParameterDecisions) GetParameterValuesResponseParser() {
 		_ = cpeRepository.BulkInsertOrUpdateParameters(&pd.ReqRes.Session.CPE, pd.ReqRes.Session.CPE.ParameterValues)
 	} else if pd.ReqRes.Session.IsBoot {
 		if pd.ReqRes.Session.HasTaskOfType(acsxml.GPVReq) == false {
-			cpeObjectParameters := pd.ReqRes.Session.CPE.GetObjectParameters()
+			cpeObjectParameters := pd.ReqRes.Session.CPE.GetObjectNamesToParameters()
 			dbObjectParameters := cpeRepository.GetCPEParametersWithFlag(&pd.ReqRes.Session.CPE, "A")
 
 			addparams, delparams := cpe.CompareObjectParameters(cpeObjectParameters, dbObjectParameters)
