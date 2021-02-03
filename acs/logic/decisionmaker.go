@@ -8,6 +8,7 @@ import (
 	"goacs/acs/methods"
 	"goacs/acs/scripts"
 	acsxml "goacs/acs/types"
+	"goacs/lib"
 	"goacs/models/tasks"
 	"goacs/repository"
 	"goacs/repository/mysql"
@@ -15,6 +16,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 )
 
 const RunScript_MAX_COUNT = 30
@@ -79,6 +81,14 @@ func CPERequestDecision(request *http.Request, w http.ResponseWriter) {
 		paramaterDecisions := methods.ParameterDecisions{ReqRes: &reqRes}
 		paramaterDecisions.AddObjectResponseParser()
 
+	case acsxml.DownloadResp:
+		log.Println("DownloadResponse")
+		log.Println(string(reqRes.Body))
+
+	case acsxml.TransferComplete:
+		log.Println("TransferComplete")
+		log.Println(string(reqRes.Body))
+
 	case acsxml.FaultResp:
 		var faultresponse acsxml.Fault
 		_ = xml.Unmarshal(buffer, &faultresponse)
@@ -137,6 +147,7 @@ func ProcessTasks(reqRes *acshttp.CPERequest, event string) {
 
 func ProcessTask(task tasks.Task, reqRes *acshttp.CPERequest) bool {
 	log.Println("Processing task: ", task.Task)
+
 	if task.Task == tasks.RunScript && reqRes.Session.RunnedScripts < RunScript_MAX_COUNT {
 		reqRes.Session.RunnedScripts++
 		scriptEngine := scripts.NewScriptEngine(reqRes)
@@ -148,18 +159,22 @@ func ProcessTask(task tasks.Task, reqRes *acshttp.CPERequest) bool {
 		log.Println("RunnedScripts", reqRes.Session.RunnedScripts)
 		log.Println("RunScriptCount", reqRes.Session.RunScriptCount)
 		return false
+
 	} else if task.Task == acsxml.InformResp {
 		informMethods := methods.InformDecision{ReqRes: reqRes}
 		body := informMethods.CpeInformResponse()
 		reqRes.SendResponse(body)
+
 	} else if task.Task == acsxml.GPNReq {
 		parameterMethods := methods.ParameterDecisions{ReqRes: reqRes}
 		body := parameterMethods.ParameterNamesRequest(task.ParameterInfo[0].Name, task.NextLevel)
 		reqRes.SendResponse(body)
+
 	} else if task.Task == acsxml.GPVReq {
 		parameterMethods := methods.ParameterDecisions{ReqRes: reqRes}
 		body := parameterMethods.GetParameterValuesRequest(task.ParameterInfo)
 		reqRes.SendResponse(body)
+
 	} else if task.Task == acsxml.SPVReq {
 		log.Println("Current Session counts")
 		log.Println("GPN", reqRes.Session.GPNCount)
@@ -168,6 +183,7 @@ func ProcessTask(task tasks.Task, reqRes *acshttp.CPERequest) bool {
 		body := reqRes.Envelope.SetParameterValues(reqRes.Session.PopParametersToAdd())
 		log.Println(body)
 		reqRes.SendResponse(body)
+
 	} else if task.Task == acsxml.AddObjReq {
 		reqRes.Session.PrevReqType = acsxml.AddObjReq
 		body := reqRes.Envelope.AddObjectRequest(task.ParameterValues[0].Name, "")
@@ -175,6 +191,7 @@ func ProcessTask(task tasks.Task, reqRes *acshttp.CPERequest) bool {
 		gpnTask := tasks.NewCPETask(reqRes.Session.CPE.UUID)
 		gpnTask.ParameterInfo = task.ParameterInfo
 		reqRes.Session.AddTask(gpnTask)
+
 	} else if task.Task == acsxml.DelObjReq {
 		reqRes.Session.PrevReqType = acsxml.DelObjReq
 		body := reqRes.Envelope.DeleteObjectRequest(task.ParameterValues[0].Name, "")
@@ -183,6 +200,27 @@ func ProcessTask(task tasks.Task, reqRes *acshttp.CPERequest) bool {
 		gpnTask := tasks.NewCPETask(reqRes.Session.CPE.UUID)
 		gpnTask.ParameterInfo = task.ParameterInfo
 		reqRes.Session.AddTask(gpnTask)
+
+	} else if task.Task == acsxml.Download {
+		reqRes.Session.PrevReqType = acsxml.Download
+		payload := strings.Split(task.Script, "|")
+		if len(payload) != 2 {
+			log.Println("Invalid payload in Download task")
+			return true
+		}
+
+		url, err := lib.GetFileUrl(payload[0], reqRes.Request)
+
+		if err != nil {
+			return true
+		}
+
+		body := reqRes.Envelope.DownloadRequest(acsxml.DownloadRequestStruct{
+			FileType: payload[1],
+			URL:      url,
+		})
+
+		reqRes.SendResponse(body)
 	}
 
 	if task.Id != 0 && task.Infinite == false {
@@ -213,6 +251,10 @@ func parseBody(buffer []byte) (string, acsxml.Envelope) {
 			requestType = acsxml.SPVResp
 		case "addobjectresponse":
 			requestType = acsxml.AddObjResp
+		case "downloadresponse":
+			requestType = acsxml.DownloadResp
+		case "transfercomplete":
+			requestType = acsxml.TransferComplete
 		case "fault":
 			requestType = acsxml.FaultResp
 		default:

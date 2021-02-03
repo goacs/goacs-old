@@ -331,17 +331,33 @@ func (envelope *Envelope) DeleteObjectRequest(objectName string, parameterKey st
 	return request
 }
 
-func (envelope *Envelope) DownloadRequest() string {
-	return `<?xml version="1.0" encoding="UTF-8"?>
+func (envelope *Envelope) DownloadRequest(requestStruct DownloadRequestStruct) string {
+	request := `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:cwmp="urn:dslforum-org:cwmp-1-0" xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <soapenv:Header>
         <cwmp:ID soapenv:mustUnderstand="1">` + envelope.Header.ID + `</cwmp:ID>
     </soapenv:Header>
     <soapenv:Body>
         <cwmp:Download>
-		</cwmp:Download>
+			<FileType>` + requestStruct.FileType + `</FileType>
+			<URL>` + requestStruct.URL + `</URL>`
+
+	if requestStruct.Username != "" {
+		request += `<Username>` + requestStruct.Username + `</Username>`
+	}
+
+	if requestStruct.Password != "" {
+		request += `<Password>` + requestStruct.Password + `</Password>`
+	}
+	if requestStruct.FileSize != 0 {
+		request += `<FileSize>` + strconv.Itoa(requestStruct.FileSize) + `</FileSize>`
+	}
+
+	request += `</cwmp:Download>
     </soapenv:Body>
 </soapenv:Envelope>`
+
+	return request
 }
 
 func (param *ParameterInfo) ToParameterValueStruct() ParameterValueStruct {

@@ -2,6 +2,7 @@ package scripts
 
 import (
 	"goacs/acs/types"
+	"goacs/models/tasks"
 	"goacs/repository"
 	"goacs/repository/mysql"
 	"strings"
@@ -25,8 +26,10 @@ func (se *ScriptEngine) SetParameter(path string, value string, flags string) {
 	}
 
 	se.ReqRes.Session.CPE.AddParameter(parameter)
-
+	cpeRepository := mysql.NewCPERepository(repository.GetConnection())
+	_, _ = cpeRepository.UpdateParameter(&se.ReqRes.Session.CPE, parameter)
 	if flag.System == false {
+		//TODO Tricky place, we have method to add Param..
 		se.ReqRes.Session.ParametersToAdd = append(se.ReqRes.Session.ParametersToAdd, parameter)
 	}
 }
@@ -56,6 +59,13 @@ func (se *ScriptEngine) ParameterExist(path string) bool {
 func (se *ScriptEngine) SaveDevice() {
 	cpeRepository := mysql.NewCPERepository(repository.GetConnection())
 	_ = cpeRepository.BulkInsertOrUpdateParameters(&se.ReqRes.Session.CPE, se.ReqRes.Session.CPE.ParameterValues)
+}
+
+func (se *ScriptEngine) Download(filename string, filetype string) {
+	dlTask := tasks.NewCPETask(se.ReqRes.Session.CPE.UUID)
+	dlTask.Task = types.Download
+	dlTask.Script = filename + "|" + filetype
+	se.ReqRes.Session.AddTask(dlTask)
 }
 
 func (se *ScriptEngine) StringContains(text string, search string) bool {

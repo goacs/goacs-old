@@ -189,7 +189,9 @@ func (pd *ParameterDecisions) PrepareParametersToSend() {
 		diffParameters := pd.ReqRes.Session.CPE.GetChangedParametersToWrite(&cpeDBParameters)
 		log.Println("DIFF PARAMS", diffParameters)
 		if len(diffParameters) > 0 {
-			pd.ReqRes.Session.ParametersToAdd = append(pd.ReqRes.Session.ParametersToAdd, diffParameters...)
+			for _, diffParam := range diffParameters {
+				pd.ReqRes.Session.AddParameterToAdd(diffParam)
+			}
 		}
 	}
 
