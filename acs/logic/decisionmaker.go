@@ -88,6 +88,8 @@ func CPERequestDecision(request *http.Request, w http.ResponseWriter) {
 	case acsxml.TransferComplete:
 		log.Println("TransferComplete")
 		log.Println(string(reqRes.Body))
+		reqRes.SendResponse(reqRes.Envelope.TransferCompleteResponse())
+		return
 
 	case acsxml.FaultResp:
 		var faultresponse acsxml.Fault
@@ -201,7 +203,7 @@ func ProcessTask(task tasks.Task, reqRes *acshttp.CPERequest) bool {
 		gpnTask.ParameterInfo = task.ParameterInfo
 		reqRes.Session.AddTask(gpnTask)
 
-	} else if task.Task == acsxml.Download {
+	} else if task.Task == acsxml.Download || task.Task == "UploadFirmware" {
 		reqRes.Session.PrevReqType = acsxml.Download
 		payload := strings.Split(task.Script, "|")
 		if len(payload) != 2 {

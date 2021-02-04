@@ -142,7 +142,7 @@ func (pd *ParameterDecisions) GetParameterValuesResponseParser() {
 					task.Task = acsxml.DelObjReq
 					task.ParameterValues = []acsxml.ParameterValueStruct{param}
 					log.Println("ADDING DELOBJECT TASK", task)
-					//pd.ReqRes.Session.AddTask(task)
+					pd.ReqRes.Session.AddTask(task)
 				}
 
 			}
@@ -160,7 +160,7 @@ func (pd *ParameterDecisions) GetParameterValuesResponseParser() {
 					task.Task = acsxml.AddObjReq
 					task.ParameterValues = []acsxml.ParameterValueStruct{param}
 					log.Println("ADDING ADDOBJECT TASK", task)
-					//pd.ReqRes.Session.AddTask(task)
+					pd.ReqRes.Session.AddTask(task)
 				}
 
 			}

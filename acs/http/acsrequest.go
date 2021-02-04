@@ -8,6 +8,7 @@ import (
 	"goacs/models/cpe"
 	"goacs/models/tasks"
 	"goacs/repository"
+	"goacs/repository/mysql"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
@@ -50,6 +51,7 @@ func prepareCookies(session *acs.ACSSession) []*http.Cookie {
 }
 
 func (ACSRequest *ACSRequest) AddObject(param string) {
+	taskrepository := mysql.NewTasksRepository(repository.GetConnection())
 	task := tasks.NewCPETask(ACSRequest.CPE.UUID)
 
 	task.Task = types.AddObjReq
@@ -59,6 +61,7 @@ func (ACSRequest *ACSRequest) AddObject(param string) {
 		},
 	}
 
+	taskrepository.AddTask(task)
 	err := ACSRequest.Send()
 
 	if err != nil {

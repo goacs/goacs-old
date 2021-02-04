@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/xml"
 	"errors"
+	"gopkg.in/guregu/null.v4"
 	"log"
 	"math/rand"
 	"os"
@@ -101,8 +102,8 @@ type DeleteObjectResponseStruct struct {
 
 type DownloadResponseStruct struct {
 	Status       int       `xml:"Body>DownloadResponse>Status"`
-	StartTime    time.Time `xml:"Body>DownloadResponse>StartTime"`
-	CompleteTime time.Time `xml:"Body>DownloadResponse>CompleteTime"`
+	StartTime    null.Time `xml:"Body>DownloadResponse>StartTime"`
+	CompleteTime null.Time `xml:"Body>DownloadResponse>CompleteTime"`
 }
 
 type DownloadRequestStruct struct {
@@ -116,6 +117,14 @@ type DownloadRequestStruct struct {
 	DelaySeconds   int
 	SuccessURL     string
 	FailureURL     string
+}
+
+type TransferCompleteRequest struct {
+	FaultCode    string    `xml:"Body>TransferComplete>FaultStruct>FaultCode"`
+	FaultString  string    `xml:"Body>TransferComplete>FaultStruct>FaultString"`
+	CommandKey   string    `xml:"Body>TransferComplete>CommandKey"`
+	StartTime    null.Time `xml:"Body>TransferComplete>StartTime"`
+	CompleteTime null.Time `xml:"Body>TransferComplete>CompleteTime"`
 }
 
 type ACSBool bool
@@ -358,6 +367,18 @@ func (envelope *Envelope) DownloadRequest(requestStruct DownloadRequestStruct) s
 </soapenv:Envelope>`
 
 	return request
+}
+
+func (envelope *Envelope) TransferCompleteResponse() string {
+	return `<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:cwmp="urn:dslforum-org:cwmp-1-0" xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <soapenv:Header>
+      <cwmp:ID soapenv:mustUnderstand="1">` + envelope.Header.ID + `</cwmp:ID>
+  </soapenv:Header>
+  <soapenv:Body>
+      <cwmp:TransferCompleteResponse/>
+  </soapenv:Body>
+</soapenv:Envelope>`
 }
 
 func (param *ParameterInfo) ToParameterValueStruct() ParameterValueStruct {
