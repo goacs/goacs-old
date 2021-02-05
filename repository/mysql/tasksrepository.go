@@ -29,7 +29,7 @@ func (t *TasksRepository) AddTask(task tasks.Task) {
 			task.Event,
 			task.Task,
 			task.NotBefore,
-			task.Script,
+			task.Payload,
 			task.Infinite,
 			task.CreatedAt,
 		}).ToSQL()
@@ -51,7 +51,7 @@ func (t *TasksRepository) UpdateTask(task tasks.Task) {
 			"event":      task.Event,
 			"task":       task.Task,
 			"not_before": task.NotBefore,
-			"script":     task.Script,
+			"script":     task.Payload,
 			"infinite":   task.Infinite,
 		}).
 		Where(goqu.Ex{

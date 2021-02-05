@@ -38,7 +38,7 @@ func NewScriptEngine(reqRes *acshttp.CPERequest) ScriptEngine {
 }
 
 func (se *ScriptEngine) Execute(script string) (interface{}, error) {
-	log.Println("Script execution", script)
+	log.Println("Payload execution", script)
 	return vm.Execute(se.Env, nil, script)
 }
 

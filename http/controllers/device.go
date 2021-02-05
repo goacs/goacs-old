@@ -281,9 +281,9 @@ func GetDeviceQueuedTasks(ctx *gin.Context) {
 	}
 
 	taskRepository := mysql.NewTasksRepository(repository.GetConnection())
-	tasks := taskRepository.GetTasksForCPE(cpeModel.UUID)
+	deviceTasks := taskRepository.GetTasksForCPE(cpeModel.UUID)
 
-	response.ResponseData(ctx, tasks)
+	response.ResponseData(ctx, deviceTasks)
 }
 
 func AddDeviceTask(ctx *gin.Context) {
@@ -308,8 +308,7 @@ func AddDeviceTask(ctx *gin.Context) {
 
 	task := tasks.NewCPETask(cpeModel.UUID)
 	task.Event = addTaskRequest.Event
-	task.Task = addTaskRequest.Task
-	task.Script = addTaskRequest.Script
+	task.AsScript(addTaskRequest.Script)
 
 	taskrepository.AddTask(task)
 	response.ResponseData(ctx, "")

@@ -11,9 +11,9 @@ import (
 )
 
 type AddGlobalTaskRequest struct {
-	Event  string `json:"event" validate:"required"`
-	Task   string `json:"task" validate:"required"`
-	Script string `json:"script"`
+	Event   string `json:"event" validate:"required"`
+	Task    string `json:"task" validate:"required"`
+	Payload string `json:"payload"`
 }
 
 type UpdateGlobalTaskRequest struct {
@@ -43,7 +43,7 @@ func AddGlobalTask(ctx *gin.Context) {
 	task := tasks.NewGlobalTask(tasks.GLOBAL_ID_NEW)
 	task.Event = globalTaskRequst.Event
 	task.Task = globalTaskRequst.Task
-	task.Script = globalTaskRequst.Script
+	//task.Payload = globalTaskRequst.Payload
 	taskrepository.AddTask(task)
 	response.ResponseData(ctx, "")
 }
@@ -67,7 +67,7 @@ func UpdateGlobalTask(ctx *gin.Context) {
 
 	task.Event = globalTaskRequst.Event
 	task.Task = globalTaskRequst.Task
-	task.Script = globalTaskRequst.Script
+	//task.Payload = globalTaskRequst.Payload
 
 	taskrepository.UpdateTask(task)
 	response.ResponseData(ctx, "")

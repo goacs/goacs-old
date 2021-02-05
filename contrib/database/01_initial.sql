@@ -106,7 +106,7 @@ create table tasks
     event varchar(50),
     not_before datetime,
     task varchar(80),
-    script text default '',
+    payload longtext default '',
     infinite bool default false,
     created_at datetime,
     done_at datetime null
@@ -116,20 +116,21 @@ create index tasks_for_index
     on tasks (for_name, for_id);
 
 
-INSERT INTO goacs.tasks (for_name, for_id, event, not_before, task, script, infinite, created_at, done_at) VALUES ('global', 'new', 'GetParameterValuesResponse', '2021-01-03 20:06:32', 'RunScript', 'MAC = GetParameterValue("InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.MACAddress")
-       MAC4 = SubString(Replace(MAC,":",""), 8, 12)
-       SSID = "Multiplay_" + MAC4
-       if ParameterExist("InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.EnableSSIDPrefix") == true {
-       SetParameter("InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.EnableSSIDPrefix", "0","RWS")
+INSERT INTO goacs.tasks (for_name, for_id, event, not_before, task, payload, infinite, created_at, done_at) VALUES ('global', 'new', 'GetParameterValuesResponse', '2021-01-03 20:06:32', 'RunScript',
+ '{"script":"MAC = GetParameterValue(\"InternetGatewayDevice.LANDevice.1.LANEthernetInterfaceConfig.1.MACAddress\")
+       MAC4 = SubString(Replace(MAC,\":\",\"\"), 8, 12)
+       SSID = \"Multiplay_\" + MAC4
+       if ParameterExist(\"InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.EnableSSIDPrefix\") == true {
+       SetParameter(\"InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.EnableSSIDPrefix\", \"0\",\"RWS\")
        }
-       if ParameterExist("InternetGatewayDevice.DeviceInfo.X_ZTE-COM_AdminAccount.Password") == true {
-       SetParameter("InternetGatewayDevice.DeviceInfo.X_ZTE-COM_AdminAccount.Password", "CHANGEME", "RWS")
+       if ParameterExist(\"InternetGatewayDevice.DeviceInfo.X_ZTE-COM_AdminAccount.Password\") == true {
+       SetParameter(\"InternetGatewayDevice.DeviceInfo.X_ZTE-COM_AdminAccount.Password\", \"CHANGEME\", \"RWS\")
        }
-       SetParameter("InternetGatewayDevice.ManagementServer.Password", "XD"+device.SerialNumber , "RWS")
-       SetParameter("InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID", SSID, "RWS")
+       SetParameter(\"InternetGatewayDevice.ManagementServer.Password\", \"XD\"+device.SerialNumber , \"RWS\")
+       SetParameter(\"InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID\", SSID, \"RWS\")
 
-       SetParameter("InternetGatewayDevice.ManagementServer.PeriodicInformInterval", "600", "RWS")
-       SaveDevice()
+       SetParameter(\"InternetGatewayDevice.ManagementServer.PeriodicInformInterval\", \"600\", \"RWS\")
+       SaveDevice()"}
        ', 1, '2021-01-03 20:06:32', null);
 
 create table config

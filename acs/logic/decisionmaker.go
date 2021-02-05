@@ -16,7 +16,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strings"
 )
 
 const RunScript_MAX_COUNT = 30
@@ -153,7 +152,7 @@ func ProcessTask(task tasks.Task, reqRes *acshttp.CPERequest) bool {
 	if task.Task == tasks.RunScript && reqRes.Session.RunnedScripts < RunScript_MAX_COUNT {
 		reqRes.Session.RunnedScripts++
 		scriptEngine := scripts.NewScriptEngine(reqRes)
-		_, err := scriptEngine.Execute(task.Script)
+		_, err := scriptEngine.Execute(task.Payload["script"].(string))
 		log.Println(err)
 		parameterDecisions := methods.ParameterDecisions{ReqRes: reqRes}
 		parameterDecisions.PrepareParametersToSend()
@@ -205,20 +204,15 @@ func ProcessTask(task tasks.Task, reqRes *acshttp.CPERequest) bool {
 
 	} else if task.Task == acsxml.Download || task.Task == "UploadFirmware" {
 		reqRes.Session.PrevReqType = acsxml.Download
-		payload := strings.Split(task.Script, "|")
-		if len(payload) != 2 {
-			log.Println("Invalid payload in Download task")
-			return true
-		}
 
-		url, err := lib.GetFileUrl(payload[0], reqRes.Request)
+		url, err := lib.GetFileUrl(task.Payload["filename"].(string), reqRes.Request)
 
 		if err != nil {
 			return true
 		}
 
 		body := reqRes.Envelope.DownloadRequest(acsxml.DownloadRequestStruct{
-			FileType: payload[1],
+			FileType: task.Payload["filetype"].(string),
 			URL:      url,
 		})
 

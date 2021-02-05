@@ -63,8 +63,7 @@ func (se *ScriptEngine) SaveDevice() {
 
 func (se *ScriptEngine) Download(filename string, filetype string) {
 	dlTask := tasks.NewCPETask(se.ReqRes.Session.CPE.UUID)
-	dlTask.Task = types.Download
-	dlTask.Script = filename + "|" + filetype
+	dlTask.AsUploadFirmware(filename, filetype)
 	se.ReqRes.Session.AddTask(dlTask)
 }
 
