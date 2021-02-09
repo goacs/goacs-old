@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"encoding/json"
 	"github.com/doug-martin/goqu/v9"
 	"github.com/jmoiron/sqlx"
 	"goacs/models/tasks"
@@ -19,22 +20,32 @@ func NewTasksRepository(connection *sqlx.DB) TasksRepository {
 }
 
 func (t *TasksRepository) AddTask(task tasks.Task) {
+	payload, _ := json.Marshal(task.Payload)
+	if string(payload) == "null" {
+		payload = []byte("{}")
+	}
+
 	dialect := goqu.Dialect("mysql")
 
-	query, args, _ := dialect.Insert("tasks").Prepared(true).
-		Cols("for_name", "for_id", "event", "task", "not_before", "script", "infinite", "created_at").
+	query, args, err := dialect.Insert("tasks").Prepared(true).
+		Cols("for_name", "for_id", "event", "task", "not_before", "payload", "infinite", "created_at").
 		Vals(goqu.Vals{
 			task.ForName,
 			task.ForID,
 			task.Event,
 			task.Task,
 			task.NotBefore,
-			task.Payload,
+			payload,
 			task.Infinite,
 			task.CreatedAt,
 		}).ToSQL()
 
-	_, err := t.db.Exec(query, args...)
+	if err != nil {
+		log.Println("ERROR", err.Error())
+		log.Println("QUERY", query, args)
+	}
+
+	_, err = t.db.Exec(query, args...)
 
 	if err != nil {
 		log.Println("error AddTask ", err.Error())
@@ -42,6 +53,8 @@ func (t *TasksRepository) AddTask(task tasks.Task) {
 }
 
 func (t *TasksRepository) UpdateTask(task tasks.Task) {
+	payload, _ := json.Marshal(task.Payload)
+	log.Println("PAYLOAD", payload)
 	dialect := goqu.Dialect("mysql")
 
 	query, args, _ := dialect.Update("tasks").Prepared(true).
@@ -51,7 +64,7 @@ func (t *TasksRepository) UpdateTask(task tasks.Task) {
 			"event":      task.Event,
 			"task":       task.Task,
 			"not_before": task.NotBefore,
-			"script":     task.Payload,
+			"payload":    payload,
 			"infinite":   task.Infinite,
 		}).
 		Where(goqu.Ex{

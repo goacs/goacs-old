@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"goacs/http/request"
 	"goacs/http/response"
@@ -43,6 +44,7 @@ func AddGlobalTask(ctx *gin.Context) {
 	task := tasks.NewGlobalTask(tasks.GLOBAL_ID_NEW)
 	task.Event = globalTaskRequst.Event
 	task.Task = globalTaskRequst.Task
+	_ = json.Unmarshal([]byte(globalTaskRequst.Payload), &task.Payload)
 	//task.Payload = globalTaskRequst.Payload
 	taskrepository.AddTask(task)
 	response.ResponseData(ctx, "")
@@ -50,7 +52,7 @@ func AddGlobalTask(ctx *gin.Context) {
 
 func UpdateGlobalTask(ctx *gin.Context) {
 	var globalTaskRequst UpdateGlobalTaskRequest
-	_ = ctx.BindJSON(&globalTaskRequst)
+	_ = ctx.ShouldBindJSON(&globalTaskRequst)
 
 	globalTaskRequst.TaskId, _ = strconv.ParseInt(ctx.Param("taskid"), 10, 64)
 
@@ -67,8 +69,8 @@ func UpdateGlobalTask(ctx *gin.Context) {
 
 	task.Event = globalTaskRequst.Event
 	task.Task = globalTaskRequst.Task
-	//task.Payload = globalTaskRequst.Payload
-
+	_ = json.Unmarshal([]byte(globalTaskRequst.Payload), &task.Payload)
+	task.Task = globalTaskRequst.Task
 	taskrepository.UpdateTask(task)
 	response.ResponseData(ctx, "")
 }

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 	acshttp "goacs/acs/http"
 	"goacs/acs/types"
@@ -36,9 +37,9 @@ type AssignTemplateToDeviceRequest struct {
 }
 
 type AddTaskForCPERequest struct {
-	Event  string `json:"event" validate:"required"`
-	Task   string `json:"task" validate:"required"`
-	Script string `json:"script"`
+	Event   string `json:"event" validate:"required"`
+	Task    string `json:"task" validate:"required"`
+	Payload string `json:"payload"`
 }
 
 func GetDevice(ctx *gin.Context) {
@@ -288,12 +289,13 @@ func GetDeviceQueuedTasks(ctx *gin.Context) {
 
 func AddDeviceTask(ctx *gin.Context) {
 	var addTaskRequest AddTaskForCPERequest
-	_ = ctx.BindJSON(&addTaskRequest)
+	_ = ctx.ShouldBindJSON(&addTaskRequest)
 
 	validator := request.NewApiValidator(ctx, addTaskRequest)
 	verr := validator.Validate()
 
 	if verr != nil {
+		log.Println(validator.Errors)
 		response.ResponseValidationErrors(ctx, validator)
 		return
 	}
@@ -307,8 +309,9 @@ func AddDeviceTask(ctx *gin.Context) {
 	}
 
 	task := tasks.NewCPETask(cpeModel.UUID)
+	task.Task = addTaskRequest.Task
 	task.Event = addTaskRequest.Event
-	task.AsScript(addTaskRequest.Script)
+	_ = json.Unmarshal([]byte(addTaskRequest.Payload), &task.Payload)
 
 	taskrepository.AddTask(task)
 	response.ResponseData(ctx, "")

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"goacs/acs/types"
 	"gopkg.in/guregu/null.v4"
-	"log"
 	"regexp"
 	"time"
 )
@@ -26,6 +25,8 @@ const (
 	SendParameters        = "SendParameters"
 	Reboot                = "Reboot"
 	UploadFirmware        = "UploadFirmware"
+	AddObject             = "AddObject"
+	DeleteObject          = "DeleteObject"
 )
 
 type TaskPayload map[string]interface{}
@@ -68,8 +69,6 @@ func NewGlobalTask(id string) Task {
 func FilterTasksByEvent(event string, tasksList []Task) []Task {
 	var filteredTasks []Task
 	for _, task := range tasksList {
-		log.Println(task.Event, event)
-		log.Println(task.Event == event)
 		if task.Event == event {
 			filteredTasks = append(filteredTasks, task)
 		}
@@ -93,6 +92,20 @@ func (task *Task) AsUploadFirmware(filename string, filetype string) {
 	}
 }
 
+func (task *Task) AsAddObject(path string) {
+	task.Task = AddObject
+	task.Payload = TaskPayload{
+		"path": path,
+	}
+}
+
+func (task *Task) AsDeleteObject(path string) {
+	task.Task = DeleteObject
+	task.Payload = TaskPayload{
+		"path": path,
+	}
+}
+
 func (i *TaskPayload) Value() (driver.Value, error) {
 	return json.Marshal(i)
 }
@@ -102,8 +115,8 @@ func (i *TaskPayload) Scan(src interface{}) (err error) {
 	switch src.(type) {
 	case []uint8:
 		src := string(src.([]byte))
-		re := regexp.MustCompile(`\r?\n`)
-		src = re.ReplaceAllString(src, " ")
+		re := regexp.MustCompile(`\r`)
+		src = re.ReplaceAllString(src, "")
 		err = json.Unmarshal([]byte(src), i)
 	default:
 		err = errors.New("Invalid payload")
