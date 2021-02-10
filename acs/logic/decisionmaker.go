@@ -168,7 +168,7 @@ func ProcessTask(task tasks.Task, reqRes *acshttp.CPERequest) bool {
 
 	} else if task.Task == acsxml.GPNReq {
 		parameterMethods := methods.ParameterDecisions{ReqRes: reqRes}
-		body := parameterMethods.ParameterNamesRequest(task.ParameterInfo[0].Name, task.NextLevel)
+		body := parameterMethods.ParameterNamesRequest(task.Payload["path"].(string), false)
 		reqRes.SendResponse(body)
 
 	} else if task.Task == acsxml.GPVReq {
@@ -185,21 +185,24 @@ func ProcessTask(task tasks.Task, reqRes *acshttp.CPERequest) bool {
 		log.Println(body)
 		reqRes.SendResponse(body)
 
-	} else if task.Task == acsxml.AddObjReq {
+	} else if task.Task == tasks.AddObject {
 		reqRes.Session.PrevReqType = acsxml.AddObjReq
-		body := reqRes.Envelope.AddObjectRequest(task.ParameterValues[0].Name, "")
+		body := reqRes.Envelope.AddObjectRequest(task.Payload["path"].(string), "")
 		reqRes.SendResponse(body)
 		gpnTask := tasks.NewCPETask(reqRes.Session.CPE.UUID)
-		gpnTask.ParameterInfo = task.ParameterInfo
+		gpnTask.AsGetParameterNames(task.Payload["path"].(string))
 		reqRes.Session.AddTask(gpnTask)
 
-	} else if task.Task == acsxml.DelObjReq {
+	} else if task.Task == tasks.DeleteObject {
 		reqRes.Session.PrevReqType = acsxml.DelObjReq
-		body := reqRes.Envelope.DeleteObjectRequest(task.ParameterValues[0].Name, "")
+		body := reqRes.Envelope.DeleteObjectRequest(task.Payload["path"].(string), "")
 		reqRes.SendResponse(body)
-		reqRes.Session.AddParameterToDelete(task.ParameterInfo[0].ToParameterValueStruct())
+		parameterToDelete := acsxml.ParameterValueStruct{
+			Name: task.Payload["path"].(string),
+		}
+		reqRes.Session.AddParameterToDelete(parameterToDelete)
 		gpnTask := tasks.NewCPETask(reqRes.Session.CPE.UUID)
-		gpnTask.ParameterInfo = task.ParameterInfo
+		gpnTask.AsGetParameterNames(task.Payload["path"].(string))
 		reqRes.Session.AddTask(gpnTask)
 
 	} else if task.Task == acsxml.Download || task.Task == "UploadFirmware" {

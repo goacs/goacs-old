@@ -165,12 +165,16 @@ func (session *ACSSession) FillCPESessionBaseInfo(parameters []types.ParameterVa
 		session.CPE.ConnectionRequestUrl = value
 	}
 
-	value, _ = session.CPE.GetParameterValue(session.CPE.Root + ".ManagementServer.Username")
+	value, _ = session.CPE.GetParameterValue(session.CPE.Root + ".ManagementServer.ConnectionRequestUsername")
+	log.Println("ConnectionRequestUsername", value != "", value)
 	if value != "" {
+		log.Println("Changing username")
 		session.CPE.ConnectionRequestUser = value
 	}
 
-	value, _ = session.CPE.GetParameterValue(session.CPE.Root + ".ManagementServer.Password")
+	value, _ = session.CPE.GetParameterValue(session.CPE.Root + ".ManagementServer.ConnectionRequestPassword")
+	log.Println("ConnectionRequestPassword", value != "", value)
+
 	if value != "" {
 		session.CPE.ConnectionRequestPassword = value
 	}
@@ -185,7 +189,7 @@ func (session *ACSSession) FillCPESessionBaseInfo(parameters []types.ParameterVa
 		session.CPE.SoftwareVersion = value
 	}
 
-	value, _ = session.CPE.GetParameterValue(session.CPE.Root + "..WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.ExternalIPAddress")
+	value, _ = session.CPE.GetParameterValue(session.CPE.Root + ".WANDevice.1.WANConnectionDevice.1.WANIPConnection.1.ExternalIPAddress")
 	if value != "" {
 		_ = session.CPE.IpAddress.Scan(value)
 	}

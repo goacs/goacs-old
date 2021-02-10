@@ -3,6 +3,7 @@ module goacs
 go 1.13
 
 require (
+	github.com/AHAOAHA/go-http-digest-auth-client v0.6.6
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/doug-martin/goqu/v9 v9.10.0
 	github.com/gin-contrib/cors v1.3.1
@@ -11,7 +12,6 @@ require (
 	github.com/go-playground/universal-translator v0.17.0
 	github.com/go-playground/validator/v10 v10.3.0
 	github.com/go-sql-driver/mysql v1.5.0
-	github.com/go-xmlfmt/xmlfmt v0.0.0-20191208150333-d5b6f63a941b
 	github.com/golang/protobuf v1.4.2 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/googollee/go-socket.io v1.4.4

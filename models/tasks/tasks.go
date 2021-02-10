@@ -21,12 +21,13 @@ const (
 )
 
 const (
-	RunScript      string = "RunScript"
-	SendParameters        = "SendParameters"
-	Reboot                = "Reboot"
-	UploadFirmware        = "UploadFirmware"
-	AddObject             = "AddObject"
-	DeleteObject          = "DeleteObject"
+	RunScript         string = "RunScript"
+	GetParameterNames        = "GetParameterNames"
+	SendParameters           = "SendParameters"
+	Reboot                   = "Reboot"
+	UploadFirmware           = "UploadFirmware"
+	AddObject                = "AddObject"
+	DeleteObject             = "DeleteObject"
 )
 
 type TaskPayload map[string]interface{}
@@ -101,6 +102,13 @@ func (task *Task) AsAddObject(path string) {
 
 func (task *Task) AsDeleteObject(path string) {
 	task.Task = DeleteObject
+	task.Payload = TaskPayload{
+		"path": path,
+	}
+}
+
+func (task *Task) AsGetParameterNames(path string) {
+	task.Task = GetParameterNames
 	task.Payload = TaskPayload{
 		"path": path,
 	}

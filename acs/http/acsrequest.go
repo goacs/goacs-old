@@ -12,8 +12,6 @@ import (
 	"log"
 	"net/http"
 	"net/http/cookiejar"
-	"net/url"
-	"time"
 )
 
 type ACSRequest struct {
@@ -55,12 +53,8 @@ func (ACSRequest *ACSRequest) AddObject(param string) {
 	task := tasks.NewCPETask(ACSRequest.CPE.UUID)
 
 	task.Task = types.AddObjReq
-	task.ParameterValues = []types.ParameterValueStruct{
-		{
-			Name: param,
-		},
-	}
-
+	task.Event = types.InformReq
+	task.AsAddObject(param)
 	taskrepository.AddTask(task)
 	err := ACSRequest.Send()
 
@@ -100,22 +94,13 @@ func (acsRequest *ACSRequest) Kick() {
 func (acsRequest *ACSRequest) Send() error {
 	request := dac.NewRequest(acsRequest.CPE.ConnectionRequestUser, acsRequest.CPE.ConnectionRequestPassword, "GET", acsRequest.CPE.ConnectionRequestUrl, acsRequest.Body)
 
-	parsedUrl, err := url.Parse(acsRequest.CPE.ConnectionRequestUrl)
-	jar, _ := cookiejar.New(nil)
-	jar.SetCookies(parsedUrl, prepareCookies(acsRequest.Session))
+	log.Println(request)
+	response, err2 := request.Execute()
+	log.Println(response)
 
-	client := http.Client{
-		Timeout: time.Second * 5,
-		Jar:     jar,
-	}
-
-	request.HTTPClient = &client
-
-	response, err := request.Execute()
-
-	if err != nil {
-		log.Println("acs req error", err)
-		return err
+	if err2 != nil {
+		log.Println("acs req error", err2)
+		return err2
 	}
 	defer response.Body.Close()
 	acsRequest.Response = response

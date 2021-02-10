@@ -157,12 +157,12 @@ func (r *CPERepository) UpdateOrCreate(cpe *cpe.CPE) (result bool, cpeExist bool
 
 		query, args, _ := dialect.Update("cpe").Prepared(true).
 			Set(goqu.Record{
-				"hardware_version":            cpe.HardwareVersion,
-				"software_version":            cpe.SoftwareVersion,
-				"connection_request_url":      cpe.ConnectionRequestUrl,
-				"connection_request_user":     cpe.ConnectionRequestUser,
-				"connection_request_password": cpe.ConnectionRequestPassword,
-				"updated_at":                  time.Now(),
+				"hardware_version":       cpe.HardwareVersion,
+				"software_version":       cpe.SoftwareVersion,
+				"connection_request_url": cpe.ConnectionRequestUrl,
+				//"connection_request_user":     cpe.ConnectionRequestUser,
+				//"connection_request_password": cpe.ConnectionRequestPassword,
+				"updated_at": time.Now(),
 			}).
 			Where(goqu.Ex{
 				"uuid": cpe.UUID,
