@@ -32,7 +32,8 @@ type ACSSession struct {
 	IsBootstrap                 bool
 	Provision                   bool
 	ReadAllParameters           bool
-	PrevReqType                 string
+	CurrentState                string
+	PrevState                   string
 	CreatedAt                   time.Time
 	CPE                         cpe.CPE
 	NextJob                     int

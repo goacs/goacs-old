@@ -20,7 +20,7 @@ type ParameterDecisions struct {
 }
 
 func (pd *ParameterDecisions) ParameterNamesRequest(path string, nextlevel bool) string {
-	pd.ReqRes.Session.PrevReqType = acsxml.GPNReq
+	pd.ReqRes.Session.CurrentState = acsxml.GPNReq
 	return pd.ReqRes.Envelope.GPNRequest(path, nextlevel)
 }
 
@@ -39,6 +39,9 @@ func (pd *ParameterDecisions) CpeParameterNamesResponseParser() {
 
 	nextLevelParams := pd.GetNextLevelParams(pd.ReqRes.Session.CPE.ParametersInfo)
 
+	log.Println("Nextlevel", nextLevelParams)
+	log.Println("GPNCount", pd.ReqRes.Session.GPNCount)
+
 	if pd.ReqRes.Session.GPNCount < MAX_GPN_REQUESTS && len(nextLevelParams) > 0 {
 		for _, nextLevelParam := range nextLevelParams {
 			if pd.ReqRes.Session.GPNCount > MAX_GPN_REQUESTS {
@@ -52,8 +55,7 @@ func (pd *ParameterDecisions) CpeParameterNamesResponseParser() {
 			}
 
 			task := tasks.NewCPETask(pd.ReqRes.Session.CPE.UUID)
-			task.Task = acsxml.GPNReq
-			task.ParameterInfo = append(task.ParameterInfo, parameterInfo)
+			task.AsGetParameterNames(parameterInfo.Name)
 			pd.ReqRes.Session.AddTask(task)
 			pd.ReqRes.Session.AddParameterNamesToQueryValues(parameterInfo)
 			pd.ReqRes.Session.GPNCount++
@@ -63,16 +65,23 @@ func (pd *ParameterDecisions) CpeParameterNamesResponseParser() {
 
 		return //if we have nextLevelParams, then prevent GPVReq add task
 	}
+
+	if pd.ReqRes.Session.PrevState == acsxml.AddObjReq {
+		pd.ReqRes.Session.ParameterNamesToQueryValues = gpnr.ParameterList
+	}
+
 	log.Println("Current GPN tasks", pd.ReqRes.Session.Tasks)
-	if (pd.ReqRes.Session.IsNewInACS || pd.ReqRes.Session.IsBoot) && len(pd.ReqRes.Session.Tasks) == 0 {
+	if len(pd.ReqRes.Session.Tasks) == 0 {
 		log.Println("ADDING GPVREQ for these params", pd.ReqRes.Session.ParameterNamesToQueryValues)
 		for _, parameterNames := range acsxml.ChunkParameterInfo(pd.ReqRes.Session.ParameterNamesToQueryValues, MAX_CHUNK_SIZE) {
-			log.Println("adding gpvreq for new device")
-			task := tasks.NewCPETask(pd.ReqRes.Session.CPE.UUID)
-			task.Task = acsxml.GPVReq
-			task.ParameterInfo = parameterNames
-			pd.ReqRes.Session.AddTask(task)
-			pd.ReqRes.Session.GPVCount++
+			if len(parameterNames) > 0 {
+				log.Println("adding gpvreq for new device", parameterNames)
+				task := tasks.NewCPETask(pd.ReqRes.Session.CPE.UUID)
+				task.Task = acsxml.GPVReq
+				task.ParameterInfo = parameterNames
+				pd.ReqRes.Session.AddTask(task)
+				pd.ReqRes.Session.GPVCount++
+			}
 		}
 	}
 
@@ -111,7 +120,7 @@ func needsToQueryParam(param acsxml.ParameterInfo) bool {
 
 func (pd *ParameterDecisions) GetParameterValuesRequest(parameters []acsxml.ParameterInfo) string {
 	var request = pd.ReqRes.Envelope.GPVRequest(parameters)
-	pd.ReqRes.Session.PrevReqType = acsxml.GPVReq
+	pd.ReqRes.Session.PrevState = acsxml.GPVReq
 	return request
 }
 
@@ -127,7 +136,7 @@ func (pd *ParameterDecisions) GetParameterValuesResponseParser() {
 	pd.ReqRes.Session.GPVCount--
 
 	//log.Println(pd.CPERequest.Session.CPE.ParameterValues)
-	if pd.ReqRes.Session.IsNewInACS {
+	if pd.ReqRes.Session.IsNewInACS || pd.ReqRes.Session.PrevState == acsxml.AddObjReq {
 		_ = cpeRepository.BulkInsertOrUpdateParameters(&pd.ReqRes.Session.CPE, pd.ReqRes.Session.CPE.ParameterValues)
 	} else if pd.ReqRes.Session.IsBoot {
 		if pd.ReqRes.Session.HasTaskOfType(acsxml.GPVReq) == false {
@@ -171,7 +180,7 @@ func (pd *ParameterDecisions) GetParameterValuesResponseParser() {
 }
 
 func (pd *ParameterDecisions) PrepareParametersToSend() {
-	pd.ReqRes.Session.PrevReqType = acsxml.SPVReq
+	pd.ReqRes.Session.PrevState = acsxml.SPVReq
 	cpeRepository := mysql.NewCPERepository(repository.GetConnection())
 	templateRepository := mysql.NewTemplateRepository(repository.GetConnection())
 

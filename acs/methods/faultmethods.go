@@ -13,7 +13,7 @@ type FaultDecision struct {
 
 func (FaultDecision *FaultDecision) ResponseDecision() {
 	log.Print(string(FaultDecision.ReqRes.Body))
-	FaultDecision.ReqRes.Session.PrevReqType = acsxml.FaultResp
+	FaultDecision.ReqRes.Session.PrevState = acsxml.FaultResp
 	repository := mysql.NewFaultRepository()
 	repository.SaveFault(&FaultDecision.ReqRes.Session.CPE,
 		FaultDecision.ReqRes.Session.CPE.Fault.DetailFaultCode,

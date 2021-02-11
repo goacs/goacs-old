@@ -186,7 +186,7 @@ func ProcessTask(task tasks.Task, reqRes *acshttp.CPERequest) bool {
 		reqRes.SendResponse(body)
 
 	} else if task.Task == tasks.AddObject {
-		reqRes.Session.PrevReqType = acsxml.AddObjReq
+		reqRes.Session.PrevState = acsxml.AddObjReq
 		body := reqRes.Envelope.AddObjectRequest(task.Payload["path"].(string), "")
 		reqRes.SendResponse(body)
 		gpnTask := tasks.NewCPETask(reqRes.Session.CPE.UUID)
@@ -194,7 +194,7 @@ func ProcessTask(task tasks.Task, reqRes *acshttp.CPERequest) bool {
 		reqRes.Session.AddTask(gpnTask)
 
 	} else if task.Task == tasks.DeleteObject {
-		reqRes.Session.PrevReqType = acsxml.DelObjReq
+		reqRes.Session.PrevState = acsxml.DelObjReq
 		body := reqRes.Envelope.DeleteObjectRequest(task.Payload["path"].(string), "")
 		reqRes.SendResponse(body)
 		parameterToDelete := acsxml.ParameterValueStruct{
@@ -206,7 +206,7 @@ func ProcessTask(task tasks.Task, reqRes *acshttp.CPERequest) bool {
 		reqRes.Session.AddTask(gpnTask)
 
 	} else if task.Task == acsxml.Download || task.Task == "UploadFirmware" {
-		reqRes.Session.PrevReqType = acsxml.Download
+		reqRes.Session.PrevState = acsxml.Download
 
 		url, err := lib.GetFileUrl(task.Payload["filename"].(string), reqRes.Request)
 

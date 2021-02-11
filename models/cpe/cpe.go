@@ -29,9 +29,6 @@ type CPE struct {
 }
 
 func (cpe *CPE) AddParameterInfo(parameter types.ParameterInfo) {
-	if parameter.Name[len(parameter.Name)-1:] == "." {
-		log.Println(parameter.Name)
-	}
 	for index := range cpe.ParametersInfo {
 		if cpe.ParametersInfo[index].Name == parameter.Name {
 			//cpe.ParametersInfo[index].Done = parameter.Done

@@ -15,7 +15,7 @@ type InformDecision struct {
 }
 
 func (InformDecision *InformDecision) CpeInformResponse() string {
-	InformDecision.ReqRes.Session.PrevReqType = acsxml.InformReq
+	InformDecision.ReqRes.Session.PrevState = acsxml.InformReq
 	return InformDecision.ReqRes.Envelope.InformResponse()
 }
 
@@ -43,6 +43,8 @@ func (InformDecision *InformDecision) CpeInformRequestParser() {
 	InformDecision.ReqRes.Session.AddTask(task)
 
 	if InformDecision.ReqRes.Session.IsNewInACS || InformDecision.ReqRes.Session.IsBoot {
+		//InformDecision.ReqRes.Session.RunGPV = true
+		InformDecision.ReqRes.Session.CurrentState = acsxml.GPNReq
 		task = tasks.NewCPETask(InformDecision.ReqRes.Session.CPE.UUID)
 		task.Task = acsxml.GPNReq
 		task.ParameterInfo = append(task.ParameterInfo, acsxml.ParameterInfo{
